@@ -25,13 +25,14 @@ interface AlignedParagraphProps {
 }
 
 interface Info {
-  timeBin: number;
+  hour: number;
   total: number;
-  level1: number;
-  level2: number; 
-  level3: number; 
-  level4: number; 
-  level5: number;
+  bus: number;
+  tram: number; 
+  subway: number; 
+  train: number; 
+  ship: number;
+  airplane: number;
 }
 
 
@@ -39,11 +40,12 @@ interface Info {
 interface AggregatedInfo {
   label: string;
   total: number;
-  level1: number;
-  level2: number;
-  level3: number;
-  level4: number;
-  level5: number;
+  bus: number;
+  tram: number;
+  subway: number;
+  train: number;
+  ship: number;
+  airplane: number;
 }
 
 // Define a common font configuration
@@ -58,72 +60,73 @@ const yaxisfont = {
   weight: 'normal' as const,
 };
 // Define age ranges as a constant
-const TIMEBIN_RANGES = [
-  { label: '0-30', min: 0, max: 30 },
-  { label: '31-60', min: 31, max: 60 },
-  { label: '61-90', min: 61, max: 90 },
-  { label: '91-120', min: 91, max: 120 },
-  { label: '121-150', min: 121, max: 150 },
-  { label: '151-180', min: 151, max: 180 },
-  { label: '181-210', min: 181, max: 210 },
-  { label: '211+', min: 211, max: 400 },
+const HOUR_RANGES = [
+  { label: '0-5', min: 0, max: 5 },
+  { label: '6-9', min: 6, max: 9 },
+  { label: '10-14', min: 10, max: 14 },
+  { label: '15-19', min: 15, max: 19 },
+  { label: '20-24', min: 20, max: 24 },
 ];
 
 // Optimized aggregation function
-const aggregateDataBytimeBinRanges = (details: Info[]): AggregatedInfo[] => {
-  const aggregated = TIMEBIN_RANGES.map(range => ({
+const aggregateDataByHourRanges = (details: Info[]): AggregatedInfo[] => {
+  const aggregated = HOUR_RANGES.map(range => ({
     label: range.label,
     total: 0,
-    level1: 0,
-    level2: 0,
-    level3: 0,
-    level4: 0,
-    level5: 0,
+    bus: 0,
+    tram: 0,
+    subway: 0,
+    train: 0,
+    ship: 0,
+    airplane: 0,
   }));
 
   details.forEach(info => {
-    const index = TIMEBIN_RANGES.findIndex(
+    const index = HOUR_RANGES.findIndex(
       range =>
-        info.timeBin >= range.min &&
-        (info.timeBin < range.max || (info.timeBin === range.max && range.max ===400))
+        info.hour >= range.min &&
+        (info.hour < range.max || (info.hour === range.max && range.max ===24))
     );
 
     if (index !== -1) {
       const agg = aggregated[index];
       agg.total += info.total;
-      agg.level1 += info.level1;
-      agg.level2 += info.level2;
-      agg.level3 += info.level3;
-      agg.level4 += info.level4;
-      agg.level5 += info.level5;
+      agg.bus += info.bus;
+      agg.tram += info.tram;
+      agg.subway += info.subway;
+      agg.train += info.train;
+      agg.ship += info.ship;
+      agg.airplane += info.airplane;
     }
   });
 
   return aggregated;
 };
 
-// Optimized function to group details by individual timeBin
-const groupDetailsBytimeBin = (details: Info[]): AggregatedInfo[] => {
+// Optimized function to group details by individual hour
+const groupDetailsByHour = (details: Info[]): AggregatedInfo[] => {
   const grouped = details.reduce<Record<number, AggregatedInfo>>((acc, info) => {
-    const timeBin = info.timeBin;
-    if (!acc[timeBin]) {
-      acc[timeBin] = {
-        label: `${timeBin}`,
+    const hour = info.hour;
+    if (!acc[hour]) {
+      acc[hour] = {
+        label: `${hour}`,
         total: 0,
-        level1: 0,
-        level2: 0,
-        level3: 0,
-        level4: 0,
-        level5: 0,
+        bus: 0,
+        tram: 0,
+        subway: 0,
+        train: 0,
+        ship: 0,
+        airplane: 0,
       };
     }
-    const agg = acc[timeBin];
+    const agg = acc[hour];
     agg.total += info.total;
-    agg.level1 += info.level1;
-    agg.level2 += info.level2;
-    agg.level3 += info.level3;
-    agg.level4 += info.level4;
-    agg.level5 += info.level5;
+    agg.bus += info.bus;
+    agg.tram += info.tram;
+    agg.subway += info.subway;
+    agg.train += info.train;
+    agg.ship += info.ship;
+    agg.airplane += info.airplane;
     return acc;
   }, {});
 
@@ -150,17 +153,18 @@ const AlignedParagraph: React.FC<AlignedParagraphProps> = ({ left, right }) => (
   </div>
 );
 
-// CommuteTimeLevel Component
-const CommuteTimeLevel: React.FC<{
+// TransitLevel Component
+const TransitLevel: React.FC<{
   levelColor: string;
   levelName: string;
   levelValues: {
     total: number;
-    level1: number;
-    level2: number;
-    level3: number;
-    level4: number;
-    level5: number;
+    bus: number;
+    tram: number;
+    subway: number;
+    train: number;
+    ship: number;
+    airplane: number;
   };
   total: number;
 }> = ({ levelColor, levelName, levelValues, total }) => (
@@ -186,28 +190,31 @@ const CommuteTimeLevel: React.FC<{
       {total}
     </div>
     <div className="row_S2v" style={{ width: '12%', justifyContent: 'center' }}>
-      {levelValues.level1}
+      {levelValues.bus}
     </div>
     <div className="row_S2v" style={{ width: '12%', justifyContent: 'center' }}>
-      {levelValues.level2}
+      {levelValues.tram}
     </div>
     <div className="row_S2v" style={{ width: '12%', justifyContent: 'center' }}>
-      {levelValues.level3}
+      {levelValues.subway}
     </div>
     <div className="row_S2v" style={{ width: '12%', justifyContent: 'center' }}>
-      {levelValues.level4}
+      {levelValues.train}
     </div>
     <div className="row_S2v" style={{ width: '12%', justifyContent: 'center' }}>
-      {levelValues.level5}
+      {levelValues.ship}
+    </div>
+    <div className="row_S2v" style={{ width: '12%', justifyContent: 'center' }}>
+      {levelValues.airplane}
     </div>
   </div>
 );
 
-interface CommuteTimeProps {
+interface TransitProps {
   onClose: () => void;
 }
 
-const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
+const Transit: FC<TransitProps> = ({ onClose }) => {
   // State hooks for totals and details
   const [details, setDetails] = useState<Info[]>([]);
   // State hooks for grouping and summary statistics visibility
@@ -215,7 +222,7 @@ const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
   const [showSummaryStats, setShowSummaryStats] = useState<boolean>(false);
 
   // Fetch details data using useDataUpdate hook
-    useDataUpdate('commuteTimeInfo.commuteTimeDetails', data => setDetails(data || []));
+    useDataUpdate('transitPassengersInfo.transitDetails', data => setDetails(data || []));
 
   // Panel dimensions
   const panWidth = window.innerWidth * 0.4;
@@ -227,36 +234,41 @@ const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
 
   // Prepare detailed data for Chart.js with grouping
   const detailedChartData = useMemo(() => {
-    const groupedData = groupDetailsBytimeBin(details)
-    const sortedtimeBins = groupedData.sort((a, b) => parseInt(a.label) - parseInt(b.label));
+    const groupedData = groupDetailsByHour(details)
+    const sortedHours = groupedData.sort((a, b) => parseInt(a.label) - parseInt(b.label));
   
     return {
-      labels: sortedtimeBins.map(data => data.label),
+      labels: sortedHours.map(data => data.label),
       datasets: [
         {
-          label: 'Uneducated',
-          data: sortedtimeBins.map(data => data.level1),
-          backgroundColor: '#808080',
+          label: 'Bus',
+          data: sortedHours.map(data => data.bus),
+          backgroundColor: '#4DA6FF',
         },
         {
-          label: 'Poorly Educated',
-          data: sortedtimeBins.map(data => data.level2),
-          backgroundColor: '#B09868',
+          label: 'Tram',
+          data: sortedHours.map(data => data.tram),
+          backgroundColor: '#CC0066',
         },
         {
-          label: 'Educated',
-          data: sortedtimeBins.map(data => data.level3),
-          backgroundColor: '#368A2E',
+          label: 'Subway',
+          data: sortedHours.map(data => data.subway),
+          backgroundColor: '#33CC33',
         },
         {
-          label: 'Well Educated',
-          data: sortedtimeBins.map(data => data.level4),
-          backgroundColor: '#B981C0',
+          label: 'Train',
+          data: sortedHours.map(data => data.train),
+          backgroundColor: '#FF8000',
         },
         {
-          label: 'Highly Educated',
-          data: sortedtimeBins.map(data => data.level5),
-          backgroundColor: '#5796D1',
+          label: 'Ship',
+          data: sortedHours.map(data => data.ship),
+          backgroundColor: '#2EB8B8',
+        },
+        {
+            label: 'Airplane',
+            data: sortedHours.map(data => data.airplane),
+            backgroundColor: '#BF00FF',
         },
       ],
     };
@@ -264,35 +276,40 @@ const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
 
   // Prepare grouped data for Chart.js
   const groupedChartData = useMemo(() => {
-    const aggregated = aggregateDataBytimeBinRanges(details);
+    const aggregated = aggregateDataByHourRanges(details);
 
     return {
       labels: aggregated.map(data => data.label),
       datasets: [
         {
-          label: 'Uneducated',
-          data: aggregated.map(data => data.level1),
-          backgroundColor: '#808080',
+          label: 'Bus',
+          data: aggregated.map(data => data.bus),
+          backgroundColor: '#4DA6FF',
         },
         {
-          label: 'Poorly Educated',
-          data: aggregated.map(data => data.level2),
-          backgroundColor: '#B09868',
+          label: 'Tram',
+          data: aggregated.map(data => data.tram),
+          backgroundColor: '#CC0066',
         },
         {
-          label: 'Educated',
-          data: aggregated.map(data => data.level3),
-          backgroundColor: '#368A2E',
+          label: 'Subway',
+          data: aggregated.map(data => data.subway),
+          backgroundColor: '#33CC33',
         },
         {
-          label: 'Well Educated',
-          data: aggregated.map(data => data.level4),
-          backgroundColor: '#B981C0',
+          label: 'Train',
+          data: aggregated.map(data => data.train),
+          backgroundColor: '#FF8000',
         },
         {
-          label: 'Highly Educated',
-          data: aggregated.map(data => data.level5),
-          backgroundColor: '#5796D1',
+          label: 'Ship',
+          data: aggregated.map(data => data.ship),
+          backgroundColor: '#2EB8B8',
+        },
+        {
+          label: 'Airplane',
+          data: aggregated.map(data => data.airplane),
+          backgroundColor: '#BF00FF',
         },
       ],
     };
@@ -310,7 +327,7 @@ const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
       plugins: {
         title: {
           display: true,
-          text: 'Commute Time (minutes)',
+          text: 'Transit Passengers',
           color: 'white',
           font: commonFont,
         },
@@ -326,7 +343,7 @@ const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
           stacked: true,
           title: {
             display: true,
-            text: 'Frequency',
+            text: 'Number of passengers',
             color: 'white',
             font: commonFont,
           },
@@ -343,7 +360,7 @@ const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
           stacked: true,
           title: {
             display: true,
-              text: isGrouped ? 'Commute Time (minutes)' : 'Commute Time (minutes)',
+            text: isGrouped ? 'Hour Groups' : 'Hours',
             color: 'white',
             font: commonFont,
           },
@@ -372,9 +389,9 @@ const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
     return Math.min(dataLength * baseHeight * heightMultiplier, MAX_CHART_HEIGHT);
   }, [isGrouped, details.length]);
 
-  // Calculate detailed summary statistics per timeBin or timeBin group
+  // Calculate detailed summary statistics per hour or hour group
   const detailedSummaryStats = useMemo(() => {
-    return isGrouped ? aggregateDataBytimeBinRanges(details) : groupDetailsBytimeBin(details);
+    return isGrouped ? aggregateDataByHourRanges(details) : groupDetailsByHour(details);
   }, [details, isGrouped]);
 
   // Define functions to handle keypress on buttons for accessibility
@@ -407,7 +424,7 @@ const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
 
   return (
     <$Panel
-      title="Commute Time Frequency Distribution"
+      title="Transit Passengers Per Hour"
       onClose={handleClose}
       initialSize={{ width: panWidth, height: panHeight }}
       initialPosition={{ top: window.innerHeight * 0.009, left: window.innerWidth * 0.053 }}
@@ -505,41 +522,45 @@ const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
             >
               <div style={{ width: '1%' }}></div>
               <div style={{ display: 'flex', alignItems: 'center', width: '22%' }}>
-                <div>timeBin</div>
+                <div>Hour</div>
               </div>
               <div className="row_S2v" style={{ width: '11%', justifyContent: 'center' }}>
                 Total
               </div>
               <div className="row_S2v" style={{ width: '11%', justifyContent: 'center' }}>
-                Uneducated
+                Bus
               </div>
               <div className="row_S2v" style={{ width: '12%', justifyContent: 'center' }}>
-                Poorly Educated
+                Tram
               </div>
               <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
-                Educated
+                Subway
               </div>
               <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
-                Well Educated
+                Train
               </div>
               <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
-                Higly Educated
+                Ship
+              </div>
+              <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
+                Airplane
               </div>
             </div>
 
             {/* Summary Rows */}
             {detailedSummaryStats.map((stat, index) => (
-              <CommuteTimeLevel
+              <TransitLevel
                 key={index}
                 levelColor={index % 2 === 0 ? 'rgba(255, 255, 255, 0.1)' : 'transparent'}
                 levelName={stat.label}
                 levelValues={{
                   total: stat.total,
-                  level1: stat.level1,
-                  level2: stat.level2,
-                  level3: stat.level3,
-                  level4: stat.level4,
-                  level5: stat.level5,
+                  bus: stat.bus,
+                  tram: stat.tram,
+                  subway: stat.subway,
+                  train: stat.train,
+                  ship: stat.ship,
+                  airplane: stat.airplane,
                 }}
                 total={stat.total}
               />
@@ -569,11 +590,11 @@ const CommuteTime: FC<CommuteTimeProps> = ({ onClose }) => {
 const getColor = (index: number) => {
   const colors = [
     '#624532',
-    '#808080',
-    '#B09868',
-    '#368A2E',
-    '#B981C0',
-    '#5796D1',
+    '#4DA6FF',
+    '#CC0066',
+    '#33CC33',
+    '#FF8000',
+    '#2EB8B8',
     '#BF00FF',
     '#FF5733',
     '#C70039',
@@ -583,4 +604,4 @@ const getColor = (index: number) => {
   return colors[index % colors.length];
 };
 
-export default CommuteTime;
+export default Transit;
