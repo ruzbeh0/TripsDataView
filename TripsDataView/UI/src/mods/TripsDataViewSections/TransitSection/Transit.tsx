@@ -222,7 +222,7 @@ const Transit: FC<TransitProps> = ({ onClose }) => {
   const [showSummaryStats, setShowSummaryStats] = useState<boolean>(false);
 
   // Fetch details data using useDataUpdate hook
-    useDataUpdate('transitPassengersInfo.transitDetails', data => setDetails(data || []));
+    useDataUpdate('transit.transitPaxDetails', data => setDetails(data || []));
 
   // Panel dimensions
   const panWidth = window.innerWidth * 0.4;

@@ -57,6 +57,11 @@ const yaxisfont = {
   size: 11,
   weight: 'normal' as const,
 };
+const xaxisfont = {
+    family: 'Arial, sans-serif',
+    size: 11,
+    weight: 'normal' as const,
+};
 // Define age ranges as a constant
 const TIMEBIN_RANGES = [
   { label: '0-30', min: 0, max: 30 },

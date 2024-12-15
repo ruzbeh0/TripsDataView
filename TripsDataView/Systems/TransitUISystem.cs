@@ -27,6 +27,8 @@ using UnityEngine.Diagnostics;
 using Game.City;
 using System.Runtime.Remoting.Messaging;
 using System.Data.SqlTypes;
+using UnityEngine.Rendering;
+using Unity.Entities.UniversalDelegates;
 
 namespace TripsDataView.Systems;
 
@@ -40,6 +42,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
     /// </summary>
     /// 
     private int previous_index = -1;
+    float standard_ticksPerDay = 262144f;
     private struct TransitByHourInfo
     {
         public double Hour;
@@ -53,7 +56,20 @@ public partial class TransitUISystem : ExtendedUISystemBase
         public TransitByHourInfo(int _hour) { Hour = _hour; }
     }
 
-    private static void WriteData(IJsonWriter writer, TransitByHourInfo info)
+    private struct WaitingTimeBinInfo
+    {
+        public double TimeBin;
+        public int Total; // Total is a sum of the below parts
+        public int Bus;
+        public int Tram;
+        public int Subway;
+        public int Train;
+        public int Ship;
+        public int Airplane;
+        public WaitingTimeBinInfo(int _timeBin) { TimeBin = _timeBin; }
+    }
+
+    private static void WriteTransitPaxData(IJsonWriter writer, TransitByHourInfo info)
     {
         writer.TypeBegin("transitByHourInfo");
         writer.PropertyName("hour");
@@ -75,14 +91,38 @@ public partial class TransitUISystem : ExtendedUISystemBase
         writer.TypeEnd();
     }
 
-    private const string kGroup = "transitPassengersInfo";
+    private static void WriteTransitWaitingData(IJsonWriter writer, WaitingTimeBinInfo info)
+    {
+        writer.TypeBegin("waitingTimeBinInfo");
+        writer.PropertyName("timeBin");
+        writer.Write(info.TimeBin);
+        writer.PropertyName("total");
+        writer.Write(info.Total);
+        writer.PropertyName("bus");
+        writer.Write(info.Bus);
+        writer.PropertyName("tram");
+        writer.Write(info.Tram);
+        writer.PropertyName("subway");
+        writer.Write(info.Subway);
+        writer.PropertyName("train");
+        writer.Write(info.Train);
+        writer.PropertyName("ship");
+        writer.Write(info.Ship);
+        writer.PropertyName("airplane");
+        writer.Write(info.Airplane);
+        writer.TypeEnd();
+    }
+
+    private const string kGroup = "transit";
     protected const string group = "transit";
 
-    private EntityQuery m_TransitPassengersQuery;
+    private EntityQuery m_TransitQuery;
 
-    private RawValueBinding m_uiResults;
+    private RawValueBinding m_uiTransitPaxResults;
+    private RawValueBinding m_uiTransitWaitingResults;
 
-    private NativeArray<TransitByHourInfo> m_Results; // final results, will be filled via jobs and then written as output
+    private NativeArray<TransitByHourInfo> m_TransitPaxResults; // final results, will be filled via jobs and then written as output
+    private NativeArray<WaitingTimeBinInfo> m_TransitWaitingResults;
 
     // 240209 Set gameMode to avoid errors in the Editor
     public override GameMode gameMode => GameMode.Game;
@@ -94,34 +134,46 @@ public partial class TransitUISystem : ExtendedUISystemBase
         Setting setting = Mod.setting;
         //m_AgeCapUISetting = CreateBinding("AgeCap", setting.AgeCapSetting);
 
-        m_TransitPassengersQuery = GetEntityQuery(new EntityQueryDesc
+        m_TransitQuery = GetEntityQuery(new EntityQueryDesc
         {
             All = new[] {
-                    ComponentType.ReadOnly<TransportLine>(),
+                    ComponentType.ReadWrite<TransportLine>(),
                     ComponentType.ReadOnly<VehicleModel>(),
+                    ComponentType.ReadOnly<RouteNumber>(),
                     ComponentType.ReadOnly<PrefabRef>(),
                 }
         });
-        RequireForUpdate(m_TransitPassengersQuery);
+        RequireForUpdate(m_TransitQuery);
 
-        AddBinding(m_uiResults = new RawValueBinding(kGroup, "transitDetails", delegate (IJsonWriter binder)
+        AddBinding(m_uiTransitPaxResults = new RawValueBinding(kGroup, "transitPaxDetails", delegate (IJsonWriter binder)
         {
-            binder.ArrayBegin(m_Results.Length);
-            for (int i = 0; i < m_Results.Length; i++)
+            binder.ArrayBegin(m_TransitPaxResults.Length);
+            for (int i = 0; i < m_TransitPaxResults.Length; i++)
             {
-                WriteData(binder, m_Results[i]);
+                WriteTransitPaxData(binder, m_TransitPaxResults[i]);
             }
             binder.ArrayEnd();
         }));
 
-        m_Results = new NativeArray<TransitByHourInfo>(24, Allocator.Persistent); // INFIXO: TODO
+        AddBinding(m_uiTransitWaitingResults = new RawValueBinding(kGroup, "transitWaitingDetails", delegate (IJsonWriter binder)
+        {
+            binder.ArrayBegin(m_TransitWaitingResults.Length);
+            for (int i = 0; i < m_TransitWaitingResults.Length; i++)
+            {
+                WriteTransitWaitingData(binder, m_TransitWaitingResults[i]);
+            }
+            binder.ArrayEnd();
+        }));
+
+        m_TransitPaxResults = new NativeArray<TransitByHourInfo>(24, Allocator.Persistent);
+        m_TransitWaitingResults = new NativeArray<WaitingTimeBinInfo>(600, Allocator.Persistent);
         Mod.log.Info("TransitUISystem created.");
     }
 
     //[Preserve]
     protected override void OnDestroy()
     {
-        m_Results.Dispose();
+        m_TransitPaxResults.Dispose();
         base.OnDestroy();
     }
 
@@ -136,26 +188,35 @@ public partial class TransitUISystem : ExtendedUISystemBase
         base.OnUpdate();
 
         Setting setting = Mod.setting;
-        //m_AgeCapUISetting.UpdateCallback(setting.AgeCapSetting);
 
         //ResetResults();
 
-        var results = m_TransitPassengersQuery.ToEntityArray(Allocator.Temp);
+        var results = m_TransitQuery.ToEntityArray(Allocator.Temp);
 
         CityConfigurationSystem m_CityConfigurationSystem = this.World.GetOrCreateSystemManaged<CityConfigurationSystem>();
 
         DateTime currentDateTime = this.World.GetExistingSystemManaged<TimeSystem>().GetCurrentDateTime();
         int index = currentDateTime.Hour;
 
+        //string path = Path.Combine(Mod.outputPath, Mod.transit_waiting);
+        //string fileNameTransitWaiting = path +
+        //    "_" + m_CityConfigurationSystem.cityName + "_" + currentDateTime.DayOfYear + "_" + currentDateTime.Year + ".csv";
+        //
+        //if (!File.Exists(fileNameTransitWaiting))
+        //{
+        //    string header = "timeBin,bus,tram,subway,train,ship,airplane"; ;
+        //    Utils.createAndDeleteFiles(fileNameTransitWaiting, header, Mod.transit_waiting, path);
+        //}
+
         string path = Path.Combine(Mod.outputPath, Mod.transit_passengers);
-        string fileName = path +
+        string fileNameTransitPax = path +
             "_" + m_CityConfigurationSystem.cityName + "_" + currentDateTime.DayOfYear + "_" + currentDateTime.Year + ".csv";
 
-        if (!File.Exists(fileName))
+        if (!File.Exists(fileNameTransitPax))
         {
             string header = "hour,bus,tram,subway,train,ship,airplane";
 
-            Utils.createAndDeleteFiles(fileName, header, Mod.transit_passengers, path);
+            Utils.createAndDeleteFiles(fileNameTransitPax, header, Mod.transit_passengers, path);
 
         }
         else
@@ -163,7 +224,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
             if (previous_index == -1)
             {
                 //Load existing data
-                using (StreamReader reader = new StreamReader(fileName))
+                using (StreamReader reader = new StreamReader(fileNameTransitPax))
                 {
                     int i = 1;
                     while (!reader.EndOfStream)
@@ -173,15 +234,18 @@ public partial class TransitUISystem : ExtendedUISystemBase
                         {
                             string[] parts = line.Split(',');
 
-                            TransitByHourInfo info = new TransitByHourInfo(Int32.Parse(parts[0]));
-                            info.Bus = Int32.Parse(parts[1]);
-                            info.Tram = Int32.Parse(parts[2]);
-                            info.Subway = Int32.Parse(parts[3]);
-                            info.Train = Int32.Parse(parts[4]);
-                            info.Ship = Int32.Parse(parts[5]);
-                            info.Airplane = Int32.Parse(parts[6]);
-                            info.Total = info.Bus + info.Subway + info.Train + info.Tram + info.Airplane + info.Ship;
-                            m_Results[Int32.Parse(parts[0])] = info;
+                            if (parts.Length > 0)
+                            {
+                                TransitByHourInfo info = new TransitByHourInfo(Int32.Parse(parts[0]));
+                                info.Bus = Int32.Parse(parts[1]);
+                                info.Tram = Int32.Parse(parts[2]);
+                                info.Subway = Int32.Parse(parts[3]);
+                                info.Train = Int32.Parse(parts[4]);
+                                info.Ship = Int32.Parse(parts[5]);
+                                info.Airplane = Int32.Parse(parts[6]);
+                                info.Total = info.Bus + info.Subway + info.Train + info.Tram + info.Airplane + info.Ship;
+                                m_TransitPaxResults[Int32.Parse(parts[0])] = info;
+                            }
                         }
                         i++;
                     }
@@ -199,6 +263,14 @@ public partial class TransitUISystem : ExtendedUISystemBase
             int airplane = 0;
             int ship = 0;
 
+            //Modes in order: bus, tram, subway, train, ship, airplane
+            int[] waiting = new int[6];
+            float[] waiting_time = new float[6];
+
+            int bin_size = 30;
+            int[,] waiting_bins = new int[bin_size, 6];
+            float minutes_in_bin = 5f;
+
             foreach (var veh in results)
             {
                 PrefabRef prefab;
@@ -212,6 +284,45 @@ public partial class TransitUISystem : ExtendedUISystemBase
 
                 if (EntityManager.TryGetComponent<TransportLineData>(prefab.m_Prefab, out transportLineData))
                 {
+                    DynamicBuffer<RouteWaypoint> waypoints = EntityManager.GetBuffer<RouteWaypoint>(veh);
+
+                    int mode = 0;
+                    if (transportLineData.m_TransportType.Equals(TransportType.Tram))
+                    {
+                        mode = 1;
+                    }
+                    if (transportLineData.m_TransportType.Equals(TransportType.Subway))
+                    {
+                        mode = 2;
+                    }
+                    if (transportLineData.m_TransportType.Equals(TransportType.Train))
+                    {
+                        mode = 3;
+                    }
+                    if (transportLineData.m_TransportType.Equals(TransportType.Ship))
+                    {
+                        mode = 4;
+                    }
+                    if (transportLineData.m_TransportType.Equals(TransportType.Airplane))
+                    {
+                        mode = 5;
+                    }
+
+                    for (int i = 0; i < waypoints.Length; i++)
+                    {
+                        RouteWaypoint waypoint = waypoints[i];
+                        WaitingPassengers waitingPax;
+                        if (EntityManager.TryGetComponent<WaitingPassengers>(waypoint.m_Waypoint, out waitingPax))
+                        {
+                            int b = (int)Math.Floor((TimeSystem.kTicksPerDay/standard_ticksPerDay)*(waitingPax.m_AverageWaitingTime / 60f) / minutes_in_bin);
+                            if (b > (bin_size - 1))
+                            {
+                                b = bin_size - 1;
+                            }
+                            waiting_bins[b, mode] += waitingPax.m_Count;
+                        }
+                    }
+
                     if (EntityManager.TryGetComponent<VehicleModel>(veh, out vehicleModel))
                     {
                         if (EntityManager.TryGetComponent<PublicTransportVehicleData>(vehicleModel.m_PrimaryPrefab, out publicTransportVehicleData))
@@ -247,6 +358,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
                                 {
                                     ship += pax.Length;
                                 }
+                                
                             }
                         }
                     }
@@ -261,24 +373,44 @@ public partial class TransitUISystem : ExtendedUISystemBase
             info.Airplane = airplane;
             info.Ship = ship;
             info.Total = bus + subway + train + tram + airplane + ship;
-            m_Results[index] = info;
+            m_TransitPaxResults[index] = info;
 
             string line = $"{index},{bus},{tram},{subway},{train},{ship},{airplane}";
 
-            using (StreamWriter sw = File.AppendText(fileName))
+            using (StreamWriter sw = File.AppendText(fileNameTransitPax))
             {
                 sw.WriteLine(line);
             }
+
+            for (int i = 0; i < bin_size; i++)
+            {
+                WaitingTimeBinInfo infoW = new WaitingTimeBinInfo((int)(i * minutes_in_bin));
+                infoW.Bus = waiting_bins[i, 0];
+                infoW.Tram = waiting_bins[i, 1];
+                infoW.Subway = waiting_bins[i, 2];
+                infoW.Train = waiting_bins[i, 3];
+                infoW.Ship = waiting_bins[i, 4];
+                infoW.Airplane = waiting_bins[i, 5];
+                m_TransitWaitingResults[i] = infoW;
+
+                //line = $"{i},{infoW.Bus},{infoW.Tram},{infoW.Subway},{infoW.Train},{infoW.Ship},{infoW.Airplane}";
+                //
+                //using (StreamWriter sw = File.AppendText(fileNameTransitWaiting))
+                //{
+                //    sw.WriteLine(line);
+                //}
+            }
         }
 
-        m_uiResults.Update();
+        m_uiTransitPaxResults.Update();
+        m_uiTransitWaitingResults.Update();
     }
 
     private void ResetResults()
     {
-        for (int i = 0; i < m_Results.Length; i++)
+        for (int i = 0; i < m_TransitPaxResults.Length; i++)
         {
-            m_Results[i] = new TransitByHourInfo(i);
+            m_TransitPaxResults[i] = new TransitByHourInfo(i);
         }
         //Plugin.Log("reset",true);
     }
@@ -326,7 +458,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
     public void InspectComponentsInQuery(EntityQuery query)
     {
         Dictionary<string, int> CompDict = new Dictionary<string, int>();
-        NativeArray<Entity> entities = m_TransitPassengersQuery.ToEntityArray(Allocator.Temp);
+        NativeArray<Entity> entities = m_TransitQuery.ToEntityArray(Allocator.Temp);
         for (int i = 0; i < entities.Length; i++)
         {
             Entity entity = entities[i];

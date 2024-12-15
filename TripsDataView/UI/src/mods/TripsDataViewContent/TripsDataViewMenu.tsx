@@ -3,12 +3,13 @@ import { Button, FloatingButton, Tooltip } from "cs2/ui";
 import icon from "images/magnifiying-glass.svg";
 import styles from "./TripsDataViewMenu.module.scss";
 import Transit from "mods/TripsDataViewSections/TransitSection/Transit";
+import TransitWaiting from "mods/TripsDataViewSections/TransitSection/TransitWaiting";
 import TripPurpose from "mods/TripsDataViewSections/TripPurposeSection/TripPurpose";
 import CommuteTime from "mods/TripsDataViewSections/CommuteTimeSection/CommuteTime";
 
 
 // Define the Section type
-type Section = 'Transit Passengers' | 'Trip Purpose' | 'Commute Time';
+type Section = 'Transit Hourly Passengers' | 'Transit Waiting Time' | 'Trip Purpose' | 'Commute Time';
 
 // Define a new type for components that accept an onClose prop
 type SectionComponentProps = {
@@ -17,7 +18,8 @@ type SectionComponentProps = {
 
 // Update the sections array type
 const sections: { name: Section; displayName: string; component: FC<SectionComponentProps> }[] = [
-  { name: 'Transit Passengers', displayName: 'Transit', component: Transit },
+  { name: 'Transit Hourly Passengers', displayName: 'Transit', component: Transit },
+  { name: 'Transit Waiting Time', displayName: 'TransitWaiting', component: TransitWaiting },
   { name: 'Trip Purpose', displayName: 'TripPurpose', component: TripPurpose },
   { name: 'Commute Time', displayName: 'CommuteTime', component: CommuteTime },
 ];
@@ -25,7 +27,8 @@ const sections: { name: Section; displayName: string; component: FC<SectionCompo
 const TripsDataViewButton: FC = () => {
   const [mainMenuOpen, setMainMenuOpen] = useState<boolean>(false);
   const [openSections, setOpenSections] = useState<Record<Section, boolean>>({
-    'Transit Passengers': false,
+    'Transit Hourly Passengers': false,
+    'Transit Waiting Time': false,
     'Trip Purpose': false,
     'Commute Time': false,
 });

@@ -141,47 +141,6 @@ public partial class CommuteTimeUISystem : ExtendedUISystemBase
         DateTime currentDateTime = this.World.GetExistingSystemManaged<TimeSystem>().GetCurrentDateTime();
         int index = currentDateTime.Hour;
 
-        //string path = Path.Combine(Mod.outputPath, Mod.commute_time);
-        //string fileName = path +
-        //    "_" + m_CityConfigurationSystem.cityName + "_" + currentDateTime.DayOfYear + "_" + currentDateTime.Year + ".csv";
-        //
-        //if (!File.Exists(fileName))
-        //{
-        //    string header = "timeBin,level1,level2,level3,level4,level5";
-        //
-        //    Utils.createAndDeleteFiles(fileName, header, Mod.commute_time, path);
-        //
-        //}
-        //else
-        //{
-        //    if (previous_index == -1)
-        //    {
-        //        //Load existing data
-        //        using (StreamReader reader = new StreamReader(fileName))
-        //        {
-        //            int i = 1;
-        //            while (!reader.EndOfStream)
-        //            {
-        //                String line = reader.ReadLine();
-        //                if (i > 1)
-        //                {
-        //                    string[] parts = line.Split(',');
-        //
-        //                    CommuteByTimeBinInfo info = new CommuteByTimeBinInfo(Int32.Parse(parts[0]));
-        //                    info.Level1 = Int32.Parse(parts[1]);
-        //                    info.Level2 = Int32.Parse(parts[2]);
-        //                    info.Level3 = Int32.Parse(parts[3]);
-        //                    info.Level4 = Int32.Parse(parts[4]);
-        //                    info.Level5 = Int32.Parse(parts[5]);
-        //                    info.Total = info.Level1 + info.Level2 + info.Level3 + info.Level4 + info.Level5;
-        //                    m_Results[Int32.Parse(parts[0])] = info;
-        //                }
-        //                i++;
-        //            }
-        //        }
-        //    }  
-        //}
-
         if (previous_index != index)
         {
             previous_index = index;

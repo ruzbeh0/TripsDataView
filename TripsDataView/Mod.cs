@@ -33,6 +33,7 @@ namespace TripsDataView
             .SetShowsErrorsInUI(false);
 
         public static string transit_passengers = "transit_passengers";
+        public static string transit_waiting = "transit_waiting";
         public static string trip_purpose = "trip_purpose";
         public static string trip_purpose_dir = "trip_purpose_directional";
         public static string commute_time = "commute_time";

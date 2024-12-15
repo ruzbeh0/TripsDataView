@@ -182,14 +182,17 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                         if (i > 1)
                         {
                             string[] parts = line.Split(',');
-
-                            TripPurposeInfo info = new TripPurposeInfo(Int32.Parse(parts[0]));
-                            info.Hbw = Int32.Parse(parts[1]);
-                            info.Hbo = Int32.Parse(parts[2]);
-                            info.Hbsch = Int32.Parse(parts[3]);
-                            info.Nhb = Int32.Parse(parts[4]);
-                            info.Total = info.Hbw + info.Hbo + info.Nhb + info.Hbsch;
-                            m_Results[Int32.Parse(parts[0])] = info;
+                            
+                            if(parts.Length > 0)
+                            {
+                                TripPurposeInfo info = new TripPurposeInfo(Int32.Parse(parts[0]));
+                                info.Hbw = Int32.Parse(parts[1]);
+                                info.Hbo = Int32.Parse(parts[2]);
+                                info.Hbsch = Int32.Parse(parts[3]);
+                                info.Nhb = Int32.Parse(parts[4]);
+                                info.Total = info.Hbw + info.Hbo + info.Nhb + info.Hbsch;
+                                m_Results[Int32.Parse(parts[0])] = info;
+                            }
                         }
                         i++;
                     }
@@ -204,7 +207,7 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
             //Citizen Purposes
             int[] cimpurp = new int[(int)Purpose.Count];
             int tourists = 0;
-
+  
             foreach (var cim in results)
             {
                 Citizen data1;
