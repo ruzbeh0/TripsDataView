@@ -136,8 +136,6 @@ public partial class CommuteTimeUISystem : ExtendedUISystemBase
 
         var results = m_CommuteTimeQuery.ToEntityArray(Allocator.Temp);
 
-        CityConfigurationSystem m_CityConfigurationSystem = this.World.GetOrCreateSystemManaged<CityConfigurationSystem>();
-
         DateTime currentDateTime = this.World.GetExistingSystemManaged<TimeSystem>().GetCurrentDateTime();
         int index = currentDateTime.Hour;
 

@@ -137,7 +137,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
         m_TransitQuery = GetEntityQuery(new EntityQueryDesc
         {
             All = new[] {
-                    ComponentType.ReadWrite<TransportLine>(),
+                    ComponentType.ReadOnly<TransportLine>(),
                     ComponentType.ReadOnly<VehicleModel>(),
                     ComponentType.ReadOnly<RouteNumber>(),
                     ComponentType.ReadOnly<PrefabRef>(),
@@ -180,7 +180,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
     public override int GetUpdateInterval(SystemUpdatePhase phase)
     {
         // One day (or month) in-game is '262144' ticks
-        return TimeSystem.kTicksPerDay / 64;
+        return TimeSystem.kTicksPerDay / 32;
     }
 
     protected override void OnUpdate()

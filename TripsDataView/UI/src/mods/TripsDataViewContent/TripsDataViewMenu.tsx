@@ -6,10 +6,11 @@ import Transit from "mods/TripsDataViewSections/TransitSection/Transit";
 import TransitWaiting from "mods/TripsDataViewSections/TransitSection/TransitWaiting";
 import TripPurpose from "mods/TripsDataViewSections/TripPurposeSection/TripPurpose";
 import CommuteTime from "mods/TripsDataViewSections/CommuteTimeSection/CommuteTime";
+import ModeShares from "mods/TripsDataViewSections/ModeSharesSection/ModeShares";
 
 
 // Define the Section type
-type Section = 'Transit Hourly Passengers' | 'Transit Waiting Time' | 'Trip Purpose' | 'Commute Time';
+type Section = 'Mode Shares' | 'Transit Hourly Passengers' | 'Transit Waiting Time' | 'Trip Purpose' | 'Commute Time';
 
 // Define a new type for components that accept an onClose prop
 type SectionComponentProps = {
@@ -18,6 +19,7 @@ type SectionComponentProps = {
 
 // Update the sections array type
 const sections: { name: Section; displayName: string; component: FC<SectionComponentProps> }[] = [
+  { name: 'Mode Shares', displayName: 'ModeShares', component: ModeShares },
   { name: 'Transit Hourly Passengers', displayName: 'Transit', component: Transit },
   { name: 'Transit Waiting Time', displayName: 'TransitWaiting', component: TransitWaiting },
   { name: 'Trip Purpose', displayName: 'TripPurpose', component: TripPurpose },
@@ -27,6 +29,7 @@ const sections: { name: Section; displayName: string; component: FC<SectionCompo
 const TripsDataViewButton: FC = () => {
   const [mainMenuOpen, setMainMenuOpen] = useState<boolean>(false);
   const [openSections, setOpenSections] = useState<Record<Section, boolean>>({
+    'Mode Shares': false,
     'Transit Hourly Passengers': false,
     'Transit Waiting Time': false,
     'Trip Purpose': false,

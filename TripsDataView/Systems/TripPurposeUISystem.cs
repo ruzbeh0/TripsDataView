@@ -131,7 +131,7 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
     public override int GetUpdateInterval(SystemUpdatePhase phase)
     {
         // One day (or month) in-game is '262144' ticks
-        return TimeSystem.kTicksPerDay / 64;
+        return TimeSystem.kTicksPerDay / 32;
     }
 
     protected override void OnUpdate()
