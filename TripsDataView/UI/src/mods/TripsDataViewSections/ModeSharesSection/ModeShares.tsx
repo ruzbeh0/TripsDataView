@@ -6,14 +6,24 @@ import $Panel from 'mods/panel';
 
 // Define interfaces for component props
 interface LinkedTripsModeValues {
-    trips: number | string;
+    trips: number;
     [key: string]: any;
 }
 interface LinkedTripsModeProps {
     levelColor?: string;
     levelName: string;
     levelValues: LinkedTripsModeValues;
-    total: number;
+    showAll?: boolean;
+}
+
+interface TransfersValues {
+    trips: number;
+    [key: string]: any;
+}
+interface TransfersProps {
+    levelColor?: string;
+    levelName: string;
+    levelValues: TransfersValues;
     showAll?: boolean;
 }
 
@@ -22,47 +32,41 @@ const LinkedTripsMode: React.FC<LinkedTripsModeProps> = ({
     levelColor,
     levelName,
     levelValues,
-    total,
     showAll = true,
 }) => {
-    const percent =
-        total > 0 && typeof levelValues.total === 'number'
-            ? `${((100 * levelValues.total) / total).toFixed(1)}%`
-            : '';
-
     return (
         <div
             className="labels_L7Q row_S2v"
             style={{ width: '99%', paddingTop: '1rem', paddingBottom: '1rem' }}
         >
             <div style={{ width: '1%' }}></div>
-            <div style={{ display: 'flex', alignItems: 'center', width: '20%' }}>
-                {levelColor && (
-                    <div
-                        className="symbol_aAH"
-                        style={{ backgroundColor: levelColor, width: '1.2em' }}
-                        aria-hidden="true"
-                    ></div>
-                )}
+            <div style={{ alignItems: 'left', width: '60%' }}>
                 <div>{levelName}</div>
             </div>
-            <div
-                className="row_S2v"
-                style={{ width: '8%', justifyContent: 'center' }}
-            >
-                {levelValues['total']}
+            <div style={{ width: '40%', justifyContent: 'left' }}>
+                {`${levelValues['trips']/10}%`}
             </div>
-            <div
-                className="row_S2v"
-                style={{ width: '7%', justifyContent: 'center' }}
-            >
-                {percent}
+        </div>
+    );
+};
+
+const Transfers: React.FC<TransfersProps> = ({
+    levelColor,
+    levelName,
+    levelValues,
+    showAll = true,
+}) => {
+    return (
+        <div
+            className="labels_L7Q row_S2v"
+            style={{ width: '99%', paddingTop: '1rem', paddingBottom: '1rem' }}
+        >
+            <div style={{ width: '1%' }}></div>
+            <div style={{ alignItems: 'left', width: '60%' }}>
+                <div><b>{levelName}</b></div>
             </div>
-            <div
-                className="row_S2v small_ExK"
-                style={{ width: '6%', justifyContent: 'center' }}
-            >
-                {levelValues['trips']}
+            <div style={{ width: '40%', justifyContent: 'left' }}>
+                {`${levelValues['trips']/10}`}
             </div>
         </div>
     );
@@ -73,6 +77,15 @@ interface LinkedTripsProps {
     onClose: () => void;
 }
 
+// Simple horizontal line
+const DataDivider: React.FC = () => {
+    return (
+        <div style={{ display: 'flex', height: '4rem', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ borderBottom: '1px solid gray' }}></div>
+        </div>
+    );
+};
+
 const LinkedTrips: FC<LinkedTripsProps> = ({ onClose }) => {
     // State for controlling the visibility of the panel
     const [isPanelVisible, setIsPanelVisible] = useState(true);
@@ -81,16 +94,18 @@ const LinkedTrips: FC<LinkedTripsProps> = ({ onClose }) => {
     const [linkedTrips, setLinkedTrips] = useState<LinkedTripsModeValues[]>([]);
     useDataUpdate('pathTripsInfo.pathTripsDetails', setLinkedTrips);
 
+    const [transfers, setTransfers] = useState<TransfersValues[]>([]);
+    useDataUpdate('pathTripsInfo.transfersDetails', setTransfers);
+
+    const [unlinkedTrips, setUnlinkedTrips] = useState<LinkedTripsModeValues[]>([]);
+    useDataUpdate('transit.transitUnlinkedDetails', setUnlinkedTrips);
+
     const defaultPosition = { top: window.innerHeight * 0.05, left: window.innerWidth * 0.005 } ;
     const [panelPosition, setPanelPosition] = useState(defaultPosition);
     const handleSavePosition = useCallback((position: { top: number; left: number }) => {
         setPanelPosition(position);
     }, []);
     const [lastClosedPosition, setLastClosedPosition] = useState(defaultPosition);
-    const headers: LinkedTripsModeValues = {
-        total: 'Total',
-        trips: 'Linked Trips',
-    };
 
     // Handler for closing the panel
     const handleClose = useCallback(() => {
@@ -113,7 +128,7 @@ const LinkedTrips: FC<LinkedTripsProps> = ({ onClose }) => {
         <$Panel
             title="Mode Shares"
             onClose={handleClose}
-            initialSize={{ width: window.innerWidth * 0.45, height: window.innerHeight * 0.255 }}
+            initialSize={{ width: window.innerWidth * 0.18, height: window.innerHeight * 0.355 }}
             initialPosition={panelPosition}
             onSavePosition={handleSavePosition}
         >
@@ -124,30 +139,87 @@ const LinkedTrips: FC<LinkedTripsProps> = ({ onClose }) => {
                     {/* Your existing content rendering */}
                     {/* Adjusted heights as needed */}
                     <div style={{ height: '10rem' }}></div>
-                    <LinkedTripsMode
-                        levelName="Mode"
-                        levelValues={headers}
-                        total={0}
-                    />
+                    <div
+                        className="labels_L7Q row_S2v"
+                        style={{ width: '99%', paddingTop: '1rem', paddingBottom: '1rem' }}
+                    >
+                        <div style={{ width: '1%' }}></div>
+                        <div style={{ alignItems: 'left', width: '60%' }}>
+                                <div><b>{"Mode"}</b></div>
+                        </div>
+                        <div style={{ width: '40%', justifyContent: 'left' }}>
+                                <b>{"Linked Trips"}</b>
+                        </div>
+                    </div>
+                    <DataDivider />
                     <div style={{ height: '5rem' }}></div>
                     <LinkedTripsMode
-                        levelColor="#808080"
                         levelName="Vehicle"
                         levelValues={linkedTrips[0]}
-                        total={Number(linkedTrips[0]) + Number(linkedTrips[1]) + Number(linkedTrips[2])}
                     />
                     <LinkedTripsMode
-                        levelColor="#B09868"
                         levelName="Transit"
                         levelValues={linkedTrips[1]}
-                        total={Number(linkedTrips[0]) + Number(linkedTrips[1]) + Number(linkedTrips[2])}
                     />
                     <LinkedTripsMode
-                        levelColor="#368A2E"
-                        levelName="Pedestrian"
+                        levelName="Walk"
                         levelValues={linkedTrips[2]}
-                        total={Number(linkedTrips[0]) + Number(linkedTrips[1]) + Number(linkedTrips[2])}
                     />
+                    <DataDivider />
+                </div>
+            )}
+            {unlinkedTrips.length === 0 ? (
+                <p>Waiting...</p>
+            ) : (
+                <div>
+                    {/* Your existing content rendering */}
+                    {/* Adjusted heights as needed */}
+                    <div style={{ height: '10rem' }}></div>
+                    <div
+                        className="labels_L7Q row_S2v"
+                        style={{ width: '99%', paddingTop: '1rem', paddingBottom: '1rem' }}
+                    >
+                        <div style={{ width: '1%' }}></div>
+                        <div style={{ alignItems: 'left', width: '60%' }}>
+                            <div><b>{"Transit Mode"}</b></div>
+                        </div>
+                        <div style={{ width: '40%', justifyContent: 'left' }}>
+                            <b>{"Unlinked Trips"}</b>
+                        </div>
+                    </div>
+                    <DataDivider />
+                    <div style={{ height: '5rem' }}></div>
+                    <LinkedTripsMode
+                        levelName="Bus"
+                        levelValues={unlinkedTrips[0]}
+                    />
+                    <LinkedTripsMode
+                        levelName="Tram"
+                        levelValues={unlinkedTrips[1]}
+                    />
+                    <LinkedTripsMode
+                        levelName="Subway"
+                        levelValues={unlinkedTrips[2]}
+                        />
+                    <LinkedTripsMode
+                        levelName="Train"
+                        levelValues={unlinkedTrips[3]}
+                        />
+                    <LinkedTripsMode
+                        levelName="Ship"
+                        levelValues={unlinkedTrips[4]}
+                        />
+                    <LinkedTripsMode
+                        levelName="Airplane"
+                        levelValues={unlinkedTrips[5]}
+                    />
+                    <DataDivider />
+                    <div style={{ height: '5rem' }}></div>
+                    <Transfers
+                        levelName="Avg. Number of Transfers per Passenger:"
+                        levelValues={transfers[0]}
+                    />
+                    <DataDivider />
                 </div>
             )}
         </$Panel>

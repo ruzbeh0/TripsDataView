@@ -61,11 +61,29 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
         public LinkedTripsInfo(int _mode) { Mode = _mode; }
     }
 
+    private struct TransferInfo
+    {
+        public int Index;
+        public int Trips;
+
+        public TransferInfo(int _index) { Index = _index; }
+    }
+
     private static void WriteLinkedData(IJsonWriter writer, LinkedTripsInfo info)
     {
         writer.TypeBegin("LinkedTripsInfo");
         writer.PropertyName("mode");
         writer.Write(info.Mode);
+        writer.PropertyName("trips");
+        writer.Write(info.Trips);
+        writer.TypeEnd();
+    }
+
+    private static void WriteTransfersData(IJsonWriter writer, TransferInfo info)
+    {
+        writer.TypeBegin("TransferInfo");
+        writer.PropertyName("index");
+        writer.Write(info.Index);
         writer.PropertyName("trips");
         writer.Write(info.Trips);
         writer.TypeEnd();
@@ -77,8 +95,10 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
     private EntityQuery m_PathTripsQuery;
 
     private RawValueBinding m_uiResults;
+    private RawValueBinding m_uiTransfersResults;
 
     private NativeArray<LinkedTripsInfo> m_Results; // final results, will be filled via jobs and then written as output
+    private NativeArray<TransferInfo> m_TransfersResults;
 
     // 240209 Set gameMode to avoid errors in the Editor
     public override GameMode gameMode => GameMode.Game;
@@ -106,8 +126,19 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             }
             binder.ArrayEnd();
         }));
-        
-        m_Results = new NativeArray<LinkedTripsInfo>(3, Allocator.Persistent); 
+
+        AddBinding(m_uiTransfersResults = new RawValueBinding(kGroup, "transfersDetails", delegate (IJsonWriter binder)
+        {
+            binder.ArrayBegin(m_TransfersResults.Length);
+            for (int i = 0; i < m_TransfersResults.Length; i++)
+            {
+                WriteTransfersData(binder, m_TransfersResults[i]);
+            }
+            binder.ArrayEnd();
+        }));
+
+        m_Results = new NativeArray<LinkedTripsInfo>(3, Allocator.Persistent);
+        m_TransfersResults = new NativeArray<TransferInfo>(1, Allocator.Persistent);
         Mod.log.Info("PathTripsUISystem created.");
     }
 
@@ -145,7 +176,6 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
 
     protected override void OnUpdate()
     {
-        Mod.log.Info($"OnUpdate");
         base.OnUpdate();
 
         Setting setting = Mod.setting;
@@ -157,7 +187,6 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
         DateTime currentDateTime = this.World.GetExistingSystemManaged<TimeSystem>().GetCurrentDateTime();
         int index = currentDateTime.Hour;
 
-        Mod.log.Info($"OnUpdate:{results.Length}");
         if (previous_index != index)
         {
             previous_index = index;
@@ -249,15 +278,19 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             }
 
             LinkedTripsInfo info = new LinkedTripsInfo((int)linkedMode.Vehicle);
-            info.Trips = vehicleLinkedTrips;
+            info.Trips = (int)(10*Math.Round((100 * (vehicleLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips))), 1));
             m_Results[(int)linkedMode.Vehicle] = info;
             info = new LinkedTripsInfo((int)linkedMode.Transit);
-            info.Trips = transitLinkedTrips;
+            info.Trips = (int)(10*Math.Round((100 * (transitLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips))), 1));
             m_Results[(int)linkedMode.Transit] = info;
             info = new LinkedTripsInfo((int)linkedMode.Pedestrian);
-            info.Trips = pedLinkedTrips;
+            info.Trips = (int)(10*Math.Round((100 * (pedLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips))), 1));
             m_Results[(int)linkedMode.Pedestrian] = info;
-            Mod.log.Info($"Unlinked:{transitUnlinkedTrips}, LInked:{transitLinkedTrips}, VehicleLinked:{vehicleLinkedTrips}, PedLinked:{pedLinkedTrips}");
+
+            TransferInfo info2 = new TransferInfo(0);
+            info2.Trips = (int)(10 * Math.Round(((float)transitUnlinkedTrips) / transitLinkedTrips,1)) - 10;
+            m_TransfersResults[0] = info2;
+            //Mod.log.Info($"Unlinked:{transitUnlinkedTrips}, LInked:{transitLinkedTrips}, VehicleLinked:{vehicleLinkedTrips}, PedLinked:{pedLinkedTrips}");
         }
 
 

@@ -29,6 +29,7 @@ using System.Runtime.Remoting.Messaging;
 using System.Data.SqlTypes;
 using UnityEngine.Rendering;
 using Unity.Entities.UniversalDelegates;
+using static TripsDataView.Systems.PathTripsUISystem;
 
 namespace TripsDataView.Systems;
 
@@ -67,6 +68,34 @@ public partial class TransitUISystem : ExtendedUISystemBase
         public int Ship;
         public int Airplane;
         public WaitingTimeBinInfo(int _timeBin) { TimeBin = _timeBin; }
+    }
+
+    public enum unlinkedMode
+    {
+        Bus,
+        Tram,
+        Subway,
+        Train,
+        Ship,
+        Airplane
+    }
+
+    private struct UnlinkedTripsInfo
+    {
+        public int Mode;
+        public int Trips; // Total is a sum of the below parts
+
+        public UnlinkedTripsInfo(int _mode) { Mode = _mode; }
+    }
+
+    private static void WriteTransitUnlinkedData(IJsonWriter writer, UnlinkedTripsInfo info)
+    {
+        writer.TypeBegin("UnlinkedTripsInfo");
+        writer.PropertyName("mode");
+        writer.Write(info.Mode);
+        writer.PropertyName("trips");
+        writer.Write(info.Trips);
+        writer.TypeEnd();
     }
 
     private static void WriteTransitPaxData(IJsonWriter writer, TransitByHourInfo info)
@@ -120,9 +149,11 @@ public partial class TransitUISystem : ExtendedUISystemBase
 
     private RawValueBinding m_uiTransitPaxResults;
     private RawValueBinding m_uiTransitWaitingResults;
+    private RawValueBinding m_uiTransitUnlinkedResults;
 
     private NativeArray<TransitByHourInfo> m_TransitPaxResults; // final results, will be filled via jobs and then written as output
     private NativeArray<WaitingTimeBinInfo> m_TransitWaitingResults;
+    private NativeArray<UnlinkedTripsInfo> m_TransitUnlinkedResults;
 
     // 240209 Set gameMode to avoid errors in the Editor
     public override GameMode gameMode => GameMode.Game;
@@ -165,8 +196,19 @@ public partial class TransitUISystem : ExtendedUISystemBase
             binder.ArrayEnd();
         }));
 
+        AddBinding(m_uiTransitUnlinkedResults = new RawValueBinding(kGroup, "transitUnlinkedDetails", delegate (IJsonWriter binder)
+        {
+            binder.ArrayBegin(m_TransitUnlinkedResults.Length);
+            for (int i = 0; i < m_TransitUnlinkedResults.Length; i++)
+            {
+                WriteTransitUnlinkedData(binder, m_TransitUnlinkedResults[i]);
+            }
+            binder.ArrayEnd();
+        }));
+
         m_TransitPaxResults = new NativeArray<TransitByHourInfo>(24, Allocator.Persistent);
-        m_TransitWaitingResults = new NativeArray<WaitingTimeBinInfo>(600, Allocator.Persistent);
+        m_TransitWaitingResults = new NativeArray<WaitingTimeBinInfo>(60, Allocator.Persistent);
+        m_TransitUnlinkedResults = new NativeArray<UnlinkedTripsInfo>(6, Allocator.Persistent);
         Mod.log.Info("TransitUISystem created.");
     }
 
@@ -382,6 +424,26 @@ public partial class TransitUISystem : ExtendedUISystemBase
                 sw.WriteLine(line);
             }
 
+            //Write Mode Shares for Unlined Trips
+            UnlinkedTripsInfo info2 = new UnlinkedTripsInfo((int)unlinkedMode.Bus);
+            info2.Trips = (int)(10*Math.Round(100 * (bus / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            m_TransitUnlinkedResults[(int)unlinkedMode.Bus] = info2;
+            info2 = new UnlinkedTripsInfo((int)unlinkedMode.Subway);
+            info2.Trips = (int)(10 * Math.Round(100 * (subway / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            m_TransitUnlinkedResults[(int)unlinkedMode.Subway] = info2;
+            info2 = new UnlinkedTripsInfo((int)unlinkedMode.Tram);
+            info2.Trips = (int)(10 * Math.Round(100 * (tram / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            m_TransitUnlinkedResults[(int)unlinkedMode.Tram] = info2;
+            info2 = new UnlinkedTripsInfo((int)unlinkedMode.Train);
+            info2.Trips = (int)(10 * Math.Round(100 * (train / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            m_TransitUnlinkedResults[(int)unlinkedMode.Train] = info2;
+            info2 = new UnlinkedTripsInfo((int)unlinkedMode.Ship);
+            info2.Trips = (int)(10 * Math.Round(100 * (ship / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            m_TransitUnlinkedResults[(int)unlinkedMode.Ship] = info2;
+            info2 = new UnlinkedTripsInfo((int)unlinkedMode.Airplane);
+            info2.Trips = (int)(10 * Math.Round(100 * (airplane / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            m_TransitUnlinkedResults[(int)unlinkedMode.Airplane] = info2;
+
             for (int i = 0; i < bin_size; i++)
             {
                 WaitingTimeBinInfo infoW = new WaitingTimeBinInfo((int)(i * minutes_in_bin));
@@ -392,13 +454,6 @@ public partial class TransitUISystem : ExtendedUISystemBase
                 infoW.Ship = waiting_bins[i, 4];
                 infoW.Airplane = waiting_bins[i, 5];
                 m_TransitWaitingResults[i] = infoW;
-
-                //line = $"{i},{infoW.Bus},{infoW.Tram},{infoW.Subway},{infoW.Train},{infoW.Ship},{infoW.Airplane}";
-                //
-                //using (StreamWriter sw = File.AppendText(fileNameTransitWaiting))
-                //{
-                //    sw.WriteLine(line);
-                //}
             }
         }
 

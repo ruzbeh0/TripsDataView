@@ -109,7 +109,7 @@ public partial class CommuteTimeUISystem : ExtendedUISystemBase
             binder.ArrayEnd();
         }));
 
-        m_Results = new NativeArray<CommuteByTimeBinInfo>(24, Allocator.Persistent); 
+        m_Results = new NativeArray<CommuteByTimeBinInfo>(40, Allocator.Persistent); 
         Mod.log.Info("CommuteTimeUISystem created.");
     }
 

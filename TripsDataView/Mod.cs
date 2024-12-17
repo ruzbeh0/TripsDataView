@@ -66,10 +66,10 @@ namespace TripsDataView
             }
 
             // Register custom update systems for UI updates
-            updateSystem.UpdateAt<TransitUISystem>(SystemUpdatePhase.GameSimulation);
-            updateSystem.UpdateAt<TripPurposeUISystem>(SystemUpdatePhase.GameSimulation);
-            updateSystem.UpdateAt<CommuteTimeUISystem>(SystemUpdatePhase.GameSimulation);
-            updateSystem.UpdateAt<PathTripsUISystem>(SystemUpdatePhase.GameSimulation);
+            updateSystem.UpdateAt<TransitUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<TripPurposeUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<CommuteTimeUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<PathTripsUISystem>(SystemUpdatePhase.UIUpdate);
 
 
 

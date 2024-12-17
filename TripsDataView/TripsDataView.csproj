@@ -5,6 +5,7 @@
 		<TargetFramework>net472</TargetFramework>
 		<Configurations>Debug;Release</Configurations>
 		<LangVersion>latest</LangVersion>
+		<LangVersion>12.0</LangVersion>
 		
 		<!--The file where mod information which is required for publishing mod on PDX mods are stored-->
 		<PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
@@ -31,16 +32,16 @@
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="Colossal.PSI.Common">
-		  <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Cities Skylines II\Cities2_Data\Managed\Colossal.PSI.Common.dll</HintPath>
+			<Private>False</Private>
 		</Reference>
 		<Reference Include="Colossal.PSI.Discord">
-		  <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Cities Skylines II\Cities2_Data\Managed\Colossal.PSI.Discord.dll</HintPath>
+			<Private>False</Private>
 		</Reference>
 		<Reference Include="Colossal.PSI.PdxSdk">
-		  <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Cities Skylines II\Cities2_Data\Managed\Colossal.PSI.PdxSdk.dll</HintPath>
+			<Private>False</Private>
 		</Reference>
 		<Reference Include="Colossal.PSI.Steamworks">
-		  <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Cities Skylines II\Cities2_Data\Managed\Colossal.PSI.Steamworks.dll</HintPath>
+			<Private>False</Private>
 		</Reference>
 		<Reference Include="Colossal.UI.Binding">
 			<Private>False</Private>
