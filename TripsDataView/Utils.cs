@@ -10,7 +10,7 @@ namespace TripsDataView
 {
     public class Utils
     {
-        public static void createAndDeleteFiles(string fileName, string header, string fileNamePattern, string path)
+        public static void createAndDeleteFiles(string fileName, string header, string fileNamePattern)
         {
             if (File.Exists(fileName))
             {

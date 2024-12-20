@@ -27,6 +27,7 @@ using UnityEngine.Diagnostics;
 using Game.City;
 using System.Runtime.Remoting.Messaging;
 using System.Data.SqlTypes;
+using Newtonsoft.Json;
 
 namespace TripsDataView.Systems;
 
@@ -42,6 +43,7 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
     private int previous_index = -1;
     private Dictionary<Entity, TravelPurpose> _CitizenToData = new Dictionary<Entity, TravelPurpose>();
     private Dictionary<int, Purpose[]> _outputData = new Dictionary<int, Purpose[]>();
+    private const int samples_per_hour = 6;
     private struct TripPurposeInfo
     {
         public double Hour;
@@ -79,6 +81,7 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
     private RawValueBinding m_uiResults;
 
     private NativeArray<TripPurposeInfo> m_Results; // final results, will be filled via jobs and then written as output
+    private string jsonFileName;
 
     // 240209 Set gameMode to avoid errors in the Editor
     public override GameMode gameMode => GameMode.Game;
@@ -107,16 +110,6 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
             binder.ArrayEnd();
         }));
 
-        //AddBinding(m_uiResults = new RawValueBinding(kGroup, "tripPurposeDirDetails", delegate (IJsonWriter binder)
-        //{
-        //    binder.ArrayBegin(m_Results.Length);
-        //    for (int i = 0; i < m_Results.Length; i++)
-        //    {
-        //        WriteData(binder, m_Results[i]);
-        //    }
-        //    binder.ArrayEnd();
-        //}));
-
         m_Results = new NativeArray<TripPurposeInfo>(24, Allocator.Persistent);
         Mod.log.Info("TripPurposeUISystem created.");
     }
@@ -126,6 +119,24 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
     {
         m_Results.Dispose();
         base.OnDestroy();
+    }
+
+    public void SaveCimTravelPurposes()
+    {
+        if (_outputData.Keys.Count() > 0)
+        {
+            CityConfigurationSystem m_CityConfigurationSystem = this.World.GetOrCreateSystemManaged<CityConfigurationSystem>();
+
+            DateTime currentDateTime = this.World.GetExistingSystemManaged<TimeSystem>().GetCurrentDateTime();
+
+            string path = Path.Combine(Mod.outputPath, Mod.cim_travel_history);
+            jsonFileName = path +
+                "_" + m_CityConfigurationSystem.cityName + "_" + currentDateTime.DayOfYear + "_" + currentDateTime.Year + ".csv";
+
+            var json = JsonConvert.SerializeObject(_outputData);
+            Utils.createAndDeleteFiles(jsonFileName, json, Mod.cim_travel_history);
+            Mod.log.Info($"Saved Json file with {_outputData.Keys.Count()} keys");
+        } 
     }
 
     public override int GetUpdateInterval(SystemUpdatePhase phase)
@@ -145,6 +156,7 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
         var results = m_TripPurposeQuery.ToEntityArray(Allocator.Temp);
 
         CityConfigurationSystem m_CityConfigurationSystem = this.World.GetOrCreateSystemManaged<CityConfigurationSystem>();
+        CitySystem m_CitySystem = this.World.GetOrCreateSystemManaged<CitySystem>();
 
         DateTime currentDateTime = this.World.GetExistingSystemManaged<TimeSystem>().GetCurrentDateTime();
         int index = currentDateTime.Hour;
@@ -156,17 +168,21 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
         if (!File.Exists(fileName2))
         {
             string header = "hour,hw,wh,wo,ow,hsch,schh,scho,osch,ho,oh,oo"; ;
-            Utils.createAndDeleteFiles(fileName2, header, Mod.trip_purpose, path);
+            Utils.createAndDeleteFiles(fileName2, header, Mod.trip_purpose);
         }
 
         path = Path.Combine(Mod.outputPath, Mod.trip_purpose);
         string fileName = path +
             "_" + m_CityConfigurationSystem.cityName + "_" + currentDateTime.DayOfYear + "_" + currentDateTime.Year + ".csv";
 
+        path = Path.Combine(Mod.outputPath, Mod.cim_travel_history);
+        jsonFileName = path +
+            "_" + m_CityConfigurationSystem.cityName + "_" + currentDateTime.DayOfYear + "_" + currentDateTime.Year + ".csv";
+
         if (!File.Exists(fileName))
         {
             string header = "hour,hbw,hbo,hbsch,nhb";
-            Utils.createAndDeleteFiles(fileName, header, Mod.trip_purpose, path);
+            Utils.createAndDeleteFiles(fileName, header, Mod.trip_purpose);
         }
         else
         {
@@ -203,6 +219,17 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
         if (previous_index != index)
         {
             previous_index = index;
+
+            if(File.Exists(jsonFileName) && index > 0 && _outputData.Keys.Count() == 0)
+            {
+                using (StreamReader r = new StreamReader(jsonFileName))
+                {
+                    string jsonR = r.ReadToEnd();
+                    _outputData = JsonConvert.DeserializeObject<Dictionary<int, Purpose[]>>(jsonR);
+
+                    Mod.log.Info($"Loaded Json file with {_outputData.Keys.Count()} keys");
+                }      
+            } 
 
             //Citizen Purposes
             int[] cimpurp = new int[(int)Purpose.Count];
@@ -267,6 +294,7 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                     nhb[h] = 0;
                 }
 
+                Mod.log.Info($"Calculating Trips with {_outputData.Keys.Count()} keys");
                 foreach (var key in _outputData.Keys)
                 {
                     Purpose[] purp = _outputData[key];
@@ -562,6 +590,11 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                     }
                 }
 
+                float total_hbw = 0f;
+                float total_hbo = 0f;
+                float total_hbsch = 0f;
+                float total_nhb = 0f;
+
                 using (StreamWriter sw = File.AppendText(fileName))
                 {
                     for (int h = 0; h < 24; h++)
@@ -575,7 +608,19 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                         info.Nhb = nhb[h];
                         info.Total = hbw[h] + hbo[h] + hbsch[h] + nhb[h];
                         m_Results[h] = info;
+
+                        total_hbw += hbw[h];
+                        total_hbo += hbo[h];
+                        total_hbsch += hbsch[h];
+                        total_nhb += nhb[h];
                     }
+                }
+
+                Population population;
+                if (this.EntityManager.TryGetComponent<Population>(m_CitySystem.City, out population))
+                {
+                    float total_pop = population.m_Population;
+                    Mod.log.Info($"Trips per person: HBW: {total_hbw/ total_pop}, HBO: {total_hbo/ total_pop}, HBSCH: {total_hbsch/total_pop}, NHB: {total_nhb/total_pop}, TOTAL: {(total_hbw+total_hbo+total_hbsch+total_nhb)/ total_pop}");
                 }
 
                 using (StreamWriter sw = File.AppendText(fileName2))

@@ -12,6 +12,7 @@ using HarmonyLib;
 using TripsDataView.Systems;
 using System.Linq;
 using System.IO;
+using Unity.Entities;
 
 // Mod namespace
 namespace TripsDataView
@@ -35,6 +36,7 @@ namespace TripsDataView
         public static string transit_passengers = "transit_passengers";
         public static string transit_waiting = "transit_waiting";
         public static string trip_purpose = "trip_purpose";
+        public static string cim_travel_history = "cim_travel_history";
         public static string trip_purpose_dir = "trip_purpose_directional";
         public static string commute_time = "commute_time";
 
@@ -68,19 +70,19 @@ namespace TripsDataView
             // Register custom update systems for UI updates
             updateSystem.UpdateAt<TransitUISystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateAt<TripPurposeUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<TripPurposeTempFileSaveSystem>(SystemUpdatePhase.Serialize);
             updateSystem.UpdateAt<CommuteTimeUISystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateAt<PathTripsUISystem>(SystemUpdatePhase.UIUpdate);
-
-
-
-
         }
 
         // Method that runs when the mod is disposed of
         public void OnDispose()
         {
-            // Log entry for debugging purposes
             log.Info(nameof(OnDispose));
+            //World.DefaultGameObjectInjectionWorld.GetOrCreateSystemManaged<TripPurposeUISystem>().SaveCimTravelPurposes();
+
+            // Log entry for debugging purposes
+
             if (setting != null)
             {
                 setting.UnregisterInOptionsUI();

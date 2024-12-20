@@ -55,17 +55,17 @@ Frequency distribution of commute time for workers and categorized by education 
 	<!--Link to the forum post where the mod can be discussed-->
 	<ForumLink Value="https://forum.paradoxplaza.com/forum/threads/trips-view-mod.1720582/" />
 	<!--Version of the mod-->
-	<ModVersion Value="0.2" />
+	<ModVersion Value="0.2.1" />
 	<!--Recommended version of the base game to use the mod-->
 	<GameVersion Value="1.2.*" />
 	<!--Dependency for the mod, can be set multiple times-->
 	<Dependency Id="" />
 	<!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
 	<ChangeLog>
-* Renamed Transit Passengers to Transit Hourly Passengers
-* Added Mode Shares with linked and unlinked trips tables
-* Added average number of transfers per passenger
-* Added Waiting Time Frequency Distribution
+* Fixed number of transfers when no transit exists
+* Added an extra decimal digit to the number of transfers shown
+* Improved transfers calculation to include transfers within the same mode
+* Saving temporary data that is needed to generate the trip purpose graph when the same is saved
 	</ChangeLog>
 	<!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdin, gitlab-->
 	<ExternalLink Type="github" Url="https://github.com/ruzbeh0/TripsDataView" />

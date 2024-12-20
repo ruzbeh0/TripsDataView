@@ -66,7 +66,7 @@ const Transfers: React.FC<TransfersProps> = ({
                 <div><b>{levelName}</b></div>
             </div>
             <div style={{ width: '40%', justifyContent: 'left' }}>
-                {`${levelValues['trips']/10}`}
+                {`${levelValues['trips']/100}`}
             </div>
         </div>
     );

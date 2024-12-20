@@ -195,6 +195,8 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             int[,] countModes = new int[results.Length, Enum.GetNames(typeof(TransportType)).Length + 1];
             //0: Pedestrian, 1: Vehicle
             int[,] countRoadType = new int[results.Length, 2];
+            //O: Pedestrian, 1: Vehicle, 2: Other transit
+            int3 countAccess = 0;
             int transitLinkedTrips = 0;
             int transitUnlinkedTrips = 0;
             int vehicleLinkedTrips = 0;
@@ -203,6 +205,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             foreach (var path in results)
             {
                 PathOwner pathOwner;
+                HashSet<int> routesHashSet = new HashSet<int>();
 
                 if (EntityManager.TryGetComponent<PathOwner>(path, out pathOwner))
                 {
@@ -234,14 +237,18 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
                                 {
                                     //if (i >= pathOwner.m_ElementIndex)
                                     {
-
-                                        PrefabRef prefab1;
-                                        if (EntityManager.TryGetComponent<PrefabRef>(owner.m_Owner, out prefab1))
+                                        RouteNumber routeNumber;
+                                        if (EntityManager.TryGetComponent<RouteNumber>(owner.m_Owner, out routeNumber))
                                         {
-                                            TransportLineData transportLineData;
-                                            if (EntityManager.TryGetComponent<TransportLineData>(prefab1.m_Prefab, out transportLineData))
+                                            PrefabRef prefab1;
+                                            if (EntityManager.TryGetComponent<PrefabRef>(owner.m_Owner, out prefab1))
                                             {
-                                                countModes[k, (int)transportLineData.m_TransportType] = 1;
+                                                TransportLineData transportLineData;
+                                                if (EntityManager.TryGetComponent<TransportLineData>(prefab1.m_Prefab, out transportLineData))
+                                                {
+                                                    countModes[k, (int)transportLineData.m_TransportType] = 1;
+                                                    routesHashSet.Add(((int)transportLineData.m_TransportType)*1000 + routeNumber.m_Number);
+                                                }
                                             }
                                         }
                                     }
@@ -250,10 +257,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
                         }
 
                         //Transit Modes
-                        for (int j = 0; j < Enum.GetNames(typeof(TransportType)).Length; ++j)
-                        {
-                            totalModes += countModes[k, j];
-                        }
+                        totalModes += routesHashSet.Count();
 
                         if (totalModes == 0)
                         {
@@ -265,6 +269,19 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
                             {
                                 pedLinkedTrips++;
                             }
+                        }
+
+                        if(countRoadType[k, 1] == 1 && routesHashSet.Count() >= 1)
+                        {
+                            countAccess.y++;
+                        }
+                        else if(routesHashSet.Count() > 1)
+                        {
+                            countAccess.z++;
+                        }
+                        else if(routesHashSet.Count() == 1)
+                        {
+                            countAccess.x++;
                         }
 
                         if (totalModes >= 1)
@@ -288,9 +305,17 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             m_Results[(int)linkedMode.Pedestrian] = info;
 
             TransferInfo info2 = new TransferInfo(0);
-            info2.Trips = (int)(10 * Math.Round(((float)transitUnlinkedTrips) / transitLinkedTrips,1)) - 10;
+            if(transitLinkedTrips > 0)
+            {
+                info2.Trips = (int)(100 * Math.Round(((float)transitUnlinkedTrips) / transitLinkedTrips, 2)) - 100;
+            } else
+            {
+                info2.Trips = 0;
+            }
+            
             m_TransfersResults[0] = info2;
-            //Mod.log.Info($"Unlinked:{transitUnlinkedTrips}, LInked:{transitLinkedTrips}, VehicleLinked:{vehicleLinkedTrips}, PedLinked:{pedLinkedTrips}");
+            //Mod.log.Info($"Access: {countAccess}");
+            //Mod.log.Info($"Unlinked:{transitUnlinkedTrips}, LInked:{transitLinkedTrips}, transfers:{info2.Trips}, VehicleLinked:{vehicleLinkedTrips}, PedLinked:{pedLinkedTrips}");
         }
 
 

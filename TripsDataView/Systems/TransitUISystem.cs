@@ -258,7 +258,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
         {
             string header = "hour,bus,tram,subway,train,ship,airplane";
 
-            Utils.createAndDeleteFiles(fileNameTransitPax, header, Mod.transit_passengers, path);
+            Utils.createAndDeleteFiles(fileNameTransitPax, header, Mod.transit_passengers);
 
         }
         else
