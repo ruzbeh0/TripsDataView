@@ -14,7 +14,7 @@ This mod adds a few graphs showing information about the trips that cims take. T
 
 This panel has two tables: linked trips and unlinked trips.
 
-* **Linked Trips:** These are complete trips from the origin to the destination 9including transfers. The modes shows are Vehicle, Transit, and Walk.
+* **Linked Trips:** These are complete trips from the origin to the destination including transfers. The modes shows are Vehicle, Transit, and Walk.
 * **Unlinked Transit Trips:** This table has the sum of total number of boardings on each transit vehicle, grouped by mode (Bus, Tram, Subway, Train, Ship and Airplane)
 
 This panel also has the information of the average number of transfers for each passenger, shown at the bottom.
@@ -26,6 +26,10 @@ This graph shows the number of passengers in each transit mode (bus, tram, subwa
 ## Transit Waiting Time Frequency Distribution
 
 Frequency distribution of waiting time for each transit mode.
+
+## Passenger Kilometers Travelled (PKT)
+
+Passenger-kilometers is the total distance travelled by all the passengers. PKT allows fair comparisons between different modes by considering both ridership and distance. For example, a bus system with 10,000 riders traveling short distances may have a lower PKT than a rail system with fewer riders traveling longer distances.
 
 ## Trips Purpose
 
@@ -55,17 +59,15 @@ Frequency distribution of commute time for workers and categorized by education 
 	<!--Link to the forum post where the mod can be discussed-->
 	<ForumLink Value="https://forum.paradoxplaza.com/forum/threads/trips-view-mod.1720582/" />
 	<!--Version of the mod-->
-	<ModVersion Value="0.2.1" />
+	<ModVersion Value="0.3" />
 	<!--Recommended version of the base game to use the mod-->
 	<GameVersion Value="1.2.*" />
 	<!--Dependency for the mod, can be set multiple times-->
 	<Dependency Id="" />
 	<!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
 	<ChangeLog>
-* Fixed number of transfers when no transit exists
-* Added an extra decimal digit to the number of transfers shown
-* Improved transfers calculation to include transfers within the same mode
-* Saving temporary data that is needed to generate the trip purpose graph when the same is saved
+* Added Passenger Kilometers Travelled bar chart
+* Added several tooltips
 	</ChangeLog>
 	<!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdin, gitlab-->
 	<ExternalLink Type="github" Url="https://github.com/ruzbeh0/TripsDataView" />

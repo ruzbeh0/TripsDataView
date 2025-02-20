@@ -43,7 +43,7 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
     private int previous_index = -1;
     private Dictionary<Entity, TravelPurpose> _CitizenToData = new Dictionary<Entity, TravelPurpose>();
     private Dictionary<int, Purpose[]> _outputData = new Dictionary<int, Purpose[]>();
-    private const int samples_per_hour = 6;
+    private const int samples_per_hour = 3;
     private struct TripPurposeInfo
     {
         public double Hour;
@@ -159,19 +159,21 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
         CitySystem m_CitySystem = this.World.GetOrCreateSystemManaged<CitySystem>();
 
         DateTime currentDateTime = this.World.GetExistingSystemManaged<TimeSystem>().GetCurrentDateTime();
-        int index = currentDateTime.Hour;
+        int hour = currentDateTime.Hour;
+        int minute_part = (int)Math.Floor(((float)currentDateTime.Minute) / (60 / samples_per_hour));
+        int index = minute_part % (60/samples_per_hour) + hour*samples_per_hour;
 
-        string path = Path.Combine(Mod.outputPath, Mod.trip_purpose_dir);
-        string fileName2 = path +
-            "_" + m_CityConfigurationSystem.cityName + "_" + currentDateTime.DayOfYear + "_" + currentDateTime.Year + ".csv";
+        //string path = Path.Combine(Mod.outputPath, Mod.trip_purpose_dir);
+        //string fileName2 = path +
+        //    "_" + m_CityConfigurationSystem.cityName + "_" + currentDateTime.DayOfYear + "_" + currentDateTime.Year + ".csv";
+        //
+        //if (!File.Exists(fileName2))
+        //{
+        //    string header = "hour,hw,wh,wo,ow,hsch,schh,scho,osch,ho,oh,oo"; ;
+        //    Utils.createAndDeleteFiles(fileName2, header, Mod.trip_purpose);
+        //}
 
-        if (!File.Exists(fileName2))
-        {
-            string header = "hour,hw,wh,wo,ow,hsch,schh,scho,osch,ho,oh,oo"; ;
-            Utils.createAndDeleteFiles(fileName2, header, Mod.trip_purpose);
-        }
-
-        path = Path.Combine(Mod.outputPath, Mod.trip_purpose);
+        string path = Path.Combine(Mod.outputPath, Mod.trip_purpose);
         string fileName = path +
             "_" + m_CityConfigurationSystem.cityName + "_" + currentDateTime.DayOfYear + "_" + currentDateTime.Year + ".csv";
 
@@ -197,17 +199,17 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                         String line = reader.ReadLine();
                         if (i > 1)
                         {
-                            string[] parts = line.Split(',');
+                            string[] line_parts = line.Split(',');
                             
-                            if(parts.Length > 0)
+                            if(line_parts.Length > 0)
                             {
-                                TripPurposeInfo info = new TripPurposeInfo(Int32.Parse(parts[0]));
-                                info.Hbw = Int32.Parse(parts[1]);
-                                info.Hbo = Int32.Parse(parts[2]);
-                                info.Hbsch = Int32.Parse(parts[3]);
-                                info.Nhb = Int32.Parse(parts[4]);
+                                TripPurposeInfo info = new TripPurposeInfo(Int32.Parse(line_parts[0]));
+                                info.Hbw = Int32.Parse(line_parts[1]);
+                                info.Hbo = Int32.Parse(line_parts[2]);
+                                info.Hbsch = Int32.Parse(line_parts[3]);
+                                info.Nhb = Int32.Parse(line_parts[4]);
                                 info.Total = info.Hbw + info.Hbo + info.Nhb + info.Hbsch;
-                                m_Results[Int32.Parse(parts[0])] = info;
+                                m_Results[Int32.Parse(line_parts[0])] = info;
                             }
                         }
                         i++;
@@ -215,6 +217,8 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                 }
             }  
         }
+
+        int parts = 36 * samples_per_hour;
 
         if (previous_index != index)
         {
@@ -234,7 +238,8 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
             //Citizen Purposes
             int[] cimpurp = new int[(int)Purpose.Count];
             int tourists = 0;
-  
+
+            int total_hbo_17 = 0;
             foreach (var cim in results)
             {
                 Citizen data1;
@@ -246,16 +251,21 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                     Purpose[] purp;
                     if (!_outputData.ContainsKey(cim.Index))
                     {
-                        // 0 - 11 YESTERDAY, 12 to 35 TODAY
-                        purp = new Purpose[36];
-                        purp[index + 12] = data2.m_Purpose;
+                        // 0 - (parts/3 - 1) YESTERDAY, (parts/3) to (parts - 1) TODAY
+                        purp = new Purpose[parts];
+                        purp[index + (parts/3)] = data2.m_Purpose;
                         _outputData.Add(cim.Index, purp);
                     }
                     else
                     {
                         if (_outputData.TryGetValue(cim.Index, out purp))
                         {
-                            purp[index + 12] = data2.m_Purpose;
+                            if(purp.Length < parts)
+                            {
+                                purp = new Purpose[parts];
+                            }
+
+                            purp[index + (parts / 3)] = data2.m_Purpose;
                             _outputData[cim.Index] = purp;
                         }
                     }
@@ -267,26 +277,26 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                 }
             }
 
-            if (currentDateTime.Hour == 0)
+            if (index == 0)
             {
-                int[] hbw = new int[48];
-                int[] hbsch = new int[48];
-                int[] hbo = new int[48];
-                int[] nhb = new int[48];
+                int[] hbw = new int[24];
+                int[] hbsch = new int[24];
+                int[] hbo = new int[24];
+                int[] nhb = new int[24];
 
-                int[] hw = new int[48];
-                int[] wh = new int[48];
-                int[] hsch = new int[48];
-                int[] schh = new int[48];
-                int[] ho = new int[48];
-                int[] oh = new int[48];
-                int[] oo = new int[48];
-                int[] wo = new int[48];
-                int[] ow = new int[48];
-                int[] osch = new int[48];
-                int[] scho = new int[48];
+                int[] hw = new int[24];
+                int[] wh = new int[24];
+                int[] hsch = new int[24];
+                int[] schh = new int[24];
+                int[] ho = new int[24];
+                int[] oh = new int[24];
+                int[] oo = new int[24];
+                int[] wo = new int[24];
+                int[] ow = new int[24];
+                int[] osch = new int[24];
+                int[] scho = new int[24];
 
-                for (int h = 0; h < 48; h++)
+                for (int h = 0; h < 24; h++)
                 {
                     hbw[h] = 0;
                     hbsch[h] = 0;
@@ -295,23 +305,28 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                 }
 
                 Mod.log.Info($"Calculating Trips with {_outputData.Keys.Count()} keys");
+
                 foreach (var key in _outputData.Keys)
                 {
                     Purpose[] purp = _outputData[key];
+                    if(purp.Length < parts)
+                    {
+                        continue;
+                    }
                     Purpose prev = Purpose.PathFailed;
                     int i = 0;
                     List<Purpose> tpurp = new List<Purpose>();
                     List<int> thour = new List<int>();
-                    while (i < 36)
+                    while (i < parts)
                     {
                         Purpose current = purp[i];
 
-                        if (i < 35)
+                        if (i < (parts - 1))
                         {
                             int j = i + 1;
                             Purpose next = purp[j];
 
-                            while (current.Equals(next) && j < 35)
+                            while (current.Equals(next) && j < (parts - 1))
                             {
                                 j++;
                                 next = purp[j];
@@ -333,7 +348,8 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                         {
                             if (!current.Equals(purp[i - 1]))
                             {
-                                if (!current.Equals(Purpose.None) && !current.Equals(prev))
+                                //if (!current.Equals(Purpose.None) && !current.Equals(prev))
+                                if (!current.Equals(prev))
                                 {
                                     tpurp.Add(current);
                                     thour.Add(i);
@@ -384,19 +400,21 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                         int hour_diff = h - previous_hour;
                         if (previous_hour > h)
                         {
-                            hour_diff += 36;
+                            hour_diff += parts;
                         }
-                        //Mod.log.Info($"->{previous},{current},{next}");
-                        if (h > 11 && (hour_diff) < 10)
+                        //Mod.log.Info($"{key},{h},{(h - (parts / 3)) /samples_per_hour},{current},{previous},{hour_diff}");
+                        int hbw_trip = 0;
+                        int hbo_trip = 0;
+                        if (h > (parts/3 - 1) && (hour_diff) < 20*(samples_per_hour / 2))
                         {
-                            if ((h == 12 && previous.Equals(next) && (next_hour == 13)) || previous.Equals(current))
+                            if ((h == (parts/3) && previous.Equals(next) && (next_hour == (parts/3 + 1))) || previous.Equals(current))
                             {
                                 continue;
                             }
                             // Going to Work
                             if (current.Equals(Purpose.GoingToWork))
                             {
-                                if (h == 12 && next_hour == 13 && (next.Equals(Purpose.Sleeping) || (next.Equals(Purpose.GoingHome) && previous.Equals(Purpose.GoingHome))))
+                                if (h == (parts/3) && next_hour == (parts/3 + 1) && (next.Equals(Purpose.Sleeping) || (next.Equals(Purpose.GoingHome) && previous.Equals(Purpose.GoingHome))))
                                 {
                                     continue;
                                 }
@@ -406,13 +424,14 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                                 }
                                 if (previous.Equals(Purpose.Sleeping) || previous.Equals(Purpose.None) || previous.Equals(Purpose.GoingHome))
                                 {
-                                    hbw[h - 12]++;
-                                    hw[h - 12]++;
+                                    hbw[(h - (parts / 3)) / samples_per_hour]++;
+                                    hw[(h - (parts / 3)) / samples_per_hour]++;
+                                    hbw_trip++;
                                 }
                                 else
                                 {
-                                    nhb[h - 12]++;
-                                    ow[h - 12]++;
+                                    nhb[(h - (parts / 3)) / samples_per_hour]++;
+                                    ow[(h - (parts / 3)) / samples_per_hour]++;
                                 }
                             }
                             else
@@ -426,15 +445,16 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                                     }
                                     if (previous.Equals(Purpose.GoingHome) || previous.Equals(Purpose.Sleeping) || previous.Equals(Purpose.None))
                                     {
-                                        hbw[h - 12]++;
-                                        hw[h - 12]++;
+                                        hbw[(h - (parts / 3)) / samples_per_hour]++;
+                                        hw[(h - (parts / 3)) / samples_per_hour]++;
+                                        hbw_trip++;
                                     }
                                     else
                                     {
                                         if (!previous.Equals(Purpose.GoingToWork))
                                         {
-                                            nhb[h - 12]++;
-                                            ow[h - 12]++;
+                                            nhb[(h - (parts / 3)) / samples_per_hour]++;
+                                            ow[(h - (parts / 3)) / samples_per_hour]++;
                                         }
                                     }
                                 }
@@ -444,13 +464,13 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                                     {
                                         if (previous.Equals(Purpose.GoingHome) || previous.Equals(Purpose.Sleeping) || previous.Equals(Purpose.None))
                                         {
-                                            hbsch[h - 12]++;
-                                            hsch[h - 12]++;
+                                            hbsch[(h - (parts / 3)) / samples_per_hour]++;
+                                            hsch[(h - (parts / 3)) / samples_per_hour]++;
                                         }
                                         else
                                         {
-                                            nhb[h - 12]++;
-                                            osch[h - 12]++;
+                                            nhb[(h - (parts / 3)) / samples_per_hour]++;
+                                            osch[(h - (parts / 3)) / samples_per_hour]++;
                                         }
                                     }
                                     else
@@ -460,15 +480,15 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                                         {
                                             if (previous.Equals(Purpose.Sleeping) || previous.Equals(Purpose.None))
                                             {
-                                                hbsch[h - 12]++;
-                                                hsch[h - 12]++;
+                                                hbsch[(h - (parts / 3)) / samples_per_hour]++;
+                                                hsch[(h - (parts / 3)) / samples_per_hour]++;
                                             }
                                             else
                                             {
                                                 if (!previous.Equals(Purpose.GoingToSchool))
                                                 {
-                                                    nhb[h - 12]++;
-                                                    osch[h - 12]++;
+                                                    nhb[(h - (parts / 3)) / samples_per_hour]++;
+                                                    osch[(h - (parts / 3)) / samples_per_hour]++;
                                                 }
 
                                             }
@@ -478,37 +498,44 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                                             //Going Home
                                             if (current.Equals(Purpose.GoingHome))
                                             {
-                                                if (h == 12 && next_hour == 13 && next.Equals(Purpose.Working) && previous.Equals(Purpose.Working))
+                                                if (h == (parts / 3) && next_hour == (parts / 3 + 1) && (next.Equals(previous) && hour_diff < samples_per_hour))
                                                 {
                                                     continue;
                                                 }
                                                 if (previous.Equals(Purpose.Working) || (previous.Equals(Purpose.GoingToWork)))
                                                 {
-                                                    if ((next.Equals(Purpose.Sleeping) || next.Equals(Purpose.None) || next.Equals(Purpose.GoingToWork)) || (Math.Abs(next_hour - h) > 1))
-                                                    {
-                                                        hbw[h - 12]++;
-                                                        wh[h - 12]++;
-                                                    }
-                                                    else
-                                                    {
-                                                        nhb[h - 12]++;
-                                                        wo[h - 12]++;
-                                                    }
+                                                    hbw[(h - (parts / 3)) / samples_per_hour]++;
+                                                    wh[(h - (parts / 3)) / samples_per_hour]++;
+                                                    hbw_trip++;
+                                                    //if ((next.Equals(Purpose.Sleeping) || next.Equals(Purpose.None) || next.Equals(Purpose.GoingToWork)))
+                                                    ////if ((next.Equals(Purpose.Sleeping) || next.Equals(Purpose.None) || next.Equals(Purpose.GoingToWork)) || (Math.Abs(next_hour - h) > samples_per_hour / 2))
+                                                    //{
+                                                    //    hbw[(h - (parts / 3)) / samples_per_hour]++;
+                                                    //    wh[(h - (parts / 3)) / samples_per_hour]++;
+                                                    //}
+                                                    //else
+                                                    //{
+                                                    //    nhb[(h - (parts / 3)) / samples_per_hour]++;
+                                                    //    wo[(h - (parts / 3)) / samples_per_hour]++;
+                                                    //}
                                                 }
                                                 else
                                                 {
                                                     if (previous.Equals(Purpose.Studying) || previous.Equals(Purpose.GoingToSchool))
                                                     {
-                                                        if ((next.Equals(Purpose.Sleeping) || next.Equals(Purpose.None)) || (Math.Abs(next_hour - h) > 1))
-                                                        {
-                                                            hbsch[h - 12]++;
-                                                            schh[h - 12]++;
-                                                        }
-                                                        else
-                                                        {
-                                                            nhb[h - 12]++;
-                                                            scho[h - 12]++;
-                                                        }
+                                                        hbsch[(h - (parts / 3)) / samples_per_hour]++;
+                                                        schh[(h - (parts / 3)) / samples_per_hour]++;
+                                                        //if ((next.Equals(Purpose.Sleeping) || next.Equals(Purpose.None)) || (Math.Abs(next_hour - h) > samples_per_hour / 2))
+                                                        //if ((next.Equals(Purpose.Sleeping) || next.Equals(Purpose.None)))
+                                                        //{
+                                                        //    hbsch[(h - (parts / 3)) / samples_per_hour]++;
+                                                        //    schh[(h - (parts / 3)) / samples_per_hour]++;
+                                                        //}
+                                                        //else
+                                                        //{
+                                                        //    nhb[(h - (parts / 3)) / samples_per_hour]++;
+                                                        //    scho[(h - (parts / 3)) / samples_per_hour]++;
+                                                        //}
                                                     }
                                                     else
                                                     {
@@ -516,24 +543,26 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                                                         {
                                                             continue;
                                                         }
-                                                        if ((next.Equals(Purpose.Sleeping) || next.Equals(Purpose.None)) || (Math.Abs(next_hour - h) > 1))
+                                                        if ((next.Equals(Purpose.Sleeping) || next.Equals(Purpose.None)) || (Math.Abs(next_hour - h) > samples_per_hour / 2))
                                                         {
-                                                            hbo[h - 12]++;
-                                                            oh[h - 12]++;
+                                                            hbo[(h - (parts / 3)) / samples_per_hour]++;
+                                                            oh[(h - (parts / 3)) / samples_per_hour]++;
+                                                            hbo_trip++;
                                                         }
                                                         else
                                                         {
-                                                            if (!previous.Equals(Purpose.None) && !previous.Equals(Purpose.Sleeping))
+                                                            if (!previous.Equals(Purpose.None) && !previous.Equals(Purpose.Sleeping) && !next.Equals(Purpose.GoingHome) && !next.Equals(Purpose.GoingToWork) && !next.Equals(Purpose.GoingToSchool))
                                                             {
-                                                                if ((Math.Abs(next_hour - h) > 2))
+                                                                if ((Math.Abs(next_hour - h) > samples_per_hour))
                                                                 {
-                                                                    hbo[h - 12]++;
-                                                                    oh[h - 12]++;
+                                                                    hbo[(h - (parts / 3)) / samples_per_hour]++;
+                                                                    oh[(h - (parts / 3)) / samples_per_hour]++;
+                                                                    hbo_trip++;
                                                                 }
                                                                 else
                                                                 {
-                                                                    nhb[h - 12]++;
-                                                                    oo[h - 12]++;
+                                                                    nhb[(h - (parts / 3)) / samples_per_hour]++;
+                                                                    oo[(h - (parts / 3)) / samples_per_hour]++;
                                                                 }
                                                             }
                                                         }
@@ -542,7 +571,7 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                                             }
                                             else
                                             {
-                                                if (current.Equals(Purpose.None))
+                                                if (current.Equals(Purpose.None) || next.Equals(Purpose.GoingHome) || next.Equals(Purpose.GoingToWork) || next.Equals(Purpose.GoingToSchool))
                                                 {
                                                     continue;
                                                 }
@@ -552,14 +581,26 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                                                     {
                                                         if (!(current.Equals(Purpose.GoingToSchool) || current.Equals(Purpose.GoingToWork) || current.Equals(Purpose.Studying) || current.Equals(Purpose.Working)))
                                                         {
-                                                            hbo[h - 12]++;
-                                                            ho[h - 12]++;
+                                                            hbo[(h - (parts / 3)) / samples_per_hour]++;
+                                                            ho[(h - (parts / 3)) / samples_per_hour]++;
+                                                            hbo_trip++;
                                                         }
-                                                        else
-                                                        {
-                                                            nhb[h - 12]++;
-                                                            oo[h - 12]++;
-                                                        }
+                                                    }
+                                                }
+                                                else if (previous.Equals(Purpose.Working) || previous.Equals(Purpose.GoingToWork))
+                                                {
+                                                    if (!(current.Equals(Purpose.GoingToSchool) || current.Equals(Purpose.GoingToWork) || current.Equals(Purpose.Studying) || current.Equals(Purpose.Working)))
+                                                    {
+                                                        nhb[(h - (parts / 3)) / samples_per_hour]++;
+                                                        wo[(h - (parts / 3)) / samples_per_hour]++;
+                                                    }
+                                                }
+                                                else if (previous.Equals(Purpose.Studying) || previous.Equals(Purpose.GoingToSchool))
+                                                {
+                                                    if (!(current.Equals(Purpose.GoingToSchool) || current.Equals(Purpose.GoingToWork) || current.Equals(Purpose.Studying) || current.Equals(Purpose.Working)))
+                                                    {
+                                                        nhb[(h - (parts / 3)) / samples_per_hour]++;
+                                                        scho[(h - (parts / 3)) / samples_per_hour]++;
                                                     }
                                                 }
                                             }
@@ -568,6 +609,11 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                                 }
                             }
                         }
+                        if((h - (parts/3))/samples_per_hour == 17)
+                        {
+                            total_hbo_17 += hbo_trip;
+                        }
+                        //Mod.log.Info($"{key},{h},{(h - (parts / 3)) / samples_per_hour},{current},{previous},hour_diff:{hour_diff},hbw:{hbw_trip},hbo:{hbo_trip}");
                     }
                     thour = null;
                     tpurp = null;
@@ -580,11 +626,15 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                     Purpose[] purp;
                     if (_outputData.TryGetValue(key, out purp))
                     {
-                        for (int h = 0; h < 12; h++)
+                        if (purp.Length < parts)
                         {
-                            purp[h] = purp[h + 24];
-                            purp[h + 12] = 0;
-                            purp[h + 24] = 0;
+                            continue;
+                        }
+                        for (int h = 0; h < (parts/3); h++)
+                        {
+                            purp[h] = purp[h + (2/3)*parts];
+                            purp[h + (parts/3)] = 0;
+                            purp[h + (2 / 3) * parts] = 0;
                             _outputData[key] = purp;
                         }
                     }
@@ -623,13 +673,13 @@ public partial class TripPurposeUISystem : ExtendedUISystemBase
                     Mod.log.Info($"Trips per person: HBW: {total_hbw/ total_pop}, HBO: {total_hbo/ total_pop}, HBSCH: {total_hbsch/total_pop}, NHB: {total_nhb/total_pop}, TOTAL: {(total_hbw+total_hbo+total_hbsch+total_nhb)/ total_pop}");
                 }
 
-                using (StreamWriter sw = File.AppendText(fileName2))
-                {
-                    for (int h = 0; h < 24; h++)
-                    {
-                        sw.WriteLine($"{h},{hw[h]},{wh[h]},{wo[h]},{ow[h]},{hsch[h]},{schh[h]},{scho[h]},{osch[h]},{ho[h]},{oh[h]},{oo[h]}");
-                    }
-                }
+                //using (StreamWriter sw = File.AppendText(fileName2))
+                //{
+                //    for (int h = 0; h < 24; h++)
+                //    {
+                //        sw.WriteLine($"{h},{hw[h]},{wh[h]},{wo[h]},{ow[h]},{hsch[h]},{schh[h]},{scho[h]},{osch[h]},{ho[h]},{oh[h]},{oo[h]}");
+                //    }
+                //}
             }
         }
 

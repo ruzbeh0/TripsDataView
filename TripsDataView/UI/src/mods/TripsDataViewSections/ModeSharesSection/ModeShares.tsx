@@ -2,6 +2,13 @@
 import React, { FC, useCallback, useEffect, useState } from 'react';
 import useDataUpdate from 'mods/use-data-update';
 import $Panel from 'mods/panel';
+import { Tooltip } from "cs2/ui";
+
+const tableTooltips = {
+    linkedTrips: "Linked trips are complete trips from the origin to the destination including transfers.",
+    unlinkedTrips: "Unlinked trips are the total number of boardings in each transit mode. If a passenger does a transfer to another vehicle, that will be counted as another unlinked trip.",
+    transfers: "Average number of transfers per passenger.",
+};
 
 
 // Define interfaces for component props
@@ -139,18 +146,21 @@ const LinkedTrips: FC<LinkedTripsProps> = ({ onClose }) => {
                     {/* Your existing content rendering */}
                     {/* Adjusted heights as needed */}
                     <div style={{ height: '10rem' }}></div>
-                    <div
-                        className="labels_L7Q row_S2v"
-                        style={{ width: '99%', paddingTop: '1rem', paddingBottom: '1rem' }}
-                    >
-                        <div style={{ width: '1%' }}></div>
-                        <div style={{ alignItems: 'left', width: '60%' }}>
-                                <div><b>{"Mode"}</b></div>
-                        </div>
-                        <div style={{ width: '40%', justifyContent: 'left' }}>
-                                <b>{"Linked Trips"}</b>
-                        </div>
-                    </div>
+                        {/* Linked Trips Table Header with Tooltip */}
+                        <Tooltip tooltip={tableTooltips.linkedTrips}>
+                            <div
+                                className="labels_L7Q row_S2v"
+                                style={{ width: '99%', paddingTop: '1rem', paddingBottom: '1rem' }}
+                            >
+                                <div style={{ width: '1%' }}></div>
+                                <div style={{ alignItems: 'left', width: '60%' }}>
+                                    <div><b>{"Mode"}</b></div>
+                                </div>
+                                <div style={{ width: '40%', justifyContent: 'left' }}>
+                                    <b>{"Linked Trips"}</b>
+                                </div>
+                            </div>
+                        </Tooltip>
                     <DataDivider />
                     <div style={{ height: '5rem' }}></div>
                     <LinkedTripsMode
@@ -175,18 +185,21 @@ const LinkedTrips: FC<LinkedTripsProps> = ({ onClose }) => {
                     {/* Your existing content rendering */}
                     {/* Adjusted heights as needed */}
                     <div style={{ height: '10rem' }}></div>
-                    <div
-                        className="labels_L7Q row_S2v"
-                        style={{ width: '99%', paddingTop: '1rem', paddingBottom: '1rem' }}
-                    >
-                        <div style={{ width: '1%' }}></div>
-                        <div style={{ alignItems: 'left', width: '60%' }}>
-                            <div><b>{"Transit Mode"}</b></div>
-                        </div>
-                        <div style={{ width: '40%', justifyContent: 'left' }}>
-                            <b>{"Unlinked Trips"}</b>
-                        </div>
-                    </div>
+                        {/* Unlinked Trips Table Header with Tooltip */}
+                        <Tooltip tooltip={tableTooltips.unlinkedTrips}>
+                            <div
+                                className="labels_L7Q row_S2v"
+                                style={{ width: '99%', paddingTop: '1rem', paddingBottom: '1rem' }}
+                            >
+                                <div style={{ width: '1%' }}></div>
+                                <div style={{ alignItems: 'left', width: '60%' }}>
+                                    <div><b>{"Transit Mode"}</b></div>
+                                </div>
+                                <div style={{ width: '40%', justifyContent: 'left' }}>
+                                    <b>{"Unlinked Trips"}</b>
+                                </div>
+                            </div>
+                        </Tooltip>
                     <DataDivider />
                     <div style={{ height: '5rem' }}></div>
                     <LinkedTripsMode
@@ -228,10 +241,3 @@ const LinkedTrips: FC<LinkedTripsProps> = ({ onClose }) => {
 
 export default LinkedTrips;
 
-// Registering the panel with HookUI (if needed)
-// window._$hookui.registerPanel({
-//     id: 'infoloom.workplaces',
-//     name: 'InfoLoom: Workplaces',
-//     icon: 'Media/Game/Icons/Workers.svg',
-//     component: $Workplaces,
-// });
