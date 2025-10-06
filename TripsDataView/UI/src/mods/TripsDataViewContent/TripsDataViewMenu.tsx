@@ -9,9 +9,14 @@ import TripPurpose from "mods/TripsDataViewSections/TripPurposeSection/TripPurpo
 import CommuteTime from "mods/TripsDataViewSections/CommuteTimeSection/CommuteTime";
 import ModeShares from "mods/TripsDataViewSections/ModeSharesSection/ModeShares";
 
-
-// Define the Section type
-type Section = 'Mode Shares' | 'Transit Hourly Passengers' | 'Transit Waiting Time' | 'Transit PKT' |'Trip Purpose' | 'Commute Time';
+type Section =
+    | 'Mode Shares'
+    | 'Transit Hourly Passengers'
+    | 'Transit Waiting Time'
+    | 'Transit PKT'
+    | 'Trip Purpose'
+    | 'Commute Time'
+    | 'Pedestrian Trip Lengths';
 
 // Define a new type for components that accept an onClose prop
 type SectionComponentProps = {
@@ -37,6 +42,7 @@ const TripsDataViewButton: FC = () => {
     'Transit PKT': false,
     'Trip Purpose': false,
     'Commute Time': false,
+    'Pedestrian Trip Lengths': false,
 });
 
   const toggleMainMenu = useCallback(() => {
@@ -57,6 +63,7 @@ const TripsDataViewButton: FC = () => {
         'Transit PKT': 'Transit Passenger Kilometers Travelled',
         'Trip Purpose': 'Purpose of trips based on origin and destination',
         'Commute Time': 'Time spent commuting',
+        'Pedestrian Trip Lengths': 'Histogram of walking distances (full vs access/egress)',
     };
 
     return (

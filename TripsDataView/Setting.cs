@@ -39,6 +39,9 @@ namespace TripsDataView
         [SettingsUISection(SettingsSection, SettingsGroup)]
         public int numOutputs { get; set; } = 5;
 
+        [SettingsUISection(SettingsSection, SettingsGroup)]
+        public bool saveDuringAutoSaves { get; set; } = false;
+
         public DropdownItem<int>[] GetIntDropdownItems()
         {
             var items = new List<DropdownItem<int>>();
@@ -77,6 +80,10 @@ namespace TripsDataView
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.MultilineText)), $"Output Folder:\n{Mod.outputPath}" },
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.numOutputs)), "Number of output files to keep saved" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.numOutputs)), $"Number of output files to keep saved" },
+
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.saveDuringAutoSaves)), "Save Trip Purpose file on auto-saves" },
+                { m_Setting.GetOptionDescLocaleID(nameof(Setting.saveDuringAutoSaves)), "If enabled, the temporary trip-purpose file is written during auto-saves. That file is necessary to show correct Trip Purpose plot in case the game is restarted but it may cause the auto-save to be slow in bigger cities" },
+
             };
         }
 

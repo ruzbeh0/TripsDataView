@@ -68,11 +68,11 @@ namespace TripsDataView
             }
 
             // Register custom update systems for UI updates
-            updateSystem.UpdateAt<TransitUISystem>(SystemUpdatePhase.UIUpdate);
-            updateSystem.UpdateAt<TripPurposeUISystem>(SystemUpdatePhase.UIUpdate);
-            updateSystem.UpdateAt<TripPurposeTempFileSaveSystem>(SystemUpdatePhase.Serialize);
-            updateSystem.UpdateAt<CommuteTimeUISystem>(SystemUpdatePhase.UIUpdate);
-            updateSystem.UpdateAt<PathTripsUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<TripsDataView.Systems.TransitUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<TripsDataView.Systems.TripPurposeUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<TripsDataView.Systems.TripPurposeTempFileSaveSystem>(SystemUpdatePhase.Serialize);
+            updateSystem.UpdateAt<TripsDataView.Systems.CommuteTimeUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<TripsDataView.Systems.PathTripsUISystem>(SystemUpdatePhase.UIUpdate);
         }
 
         // Method that runs when the mod is disposed of

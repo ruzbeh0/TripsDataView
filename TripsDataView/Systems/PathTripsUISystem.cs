@@ -51,6 +51,28 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
     /// 
     private int previous_index = -1;
 
+    // NEW: histogram of pedestrian trip lengths (meters)
+    private struct PedTripLenInfo
+    {
+        public int Bin;     // lower edge in meters (e.g., 0, 200, 400...)
+        public int Pure;    // full pedestrian trip counts
+        public int Access;  // access/egress segment counts
+        public PedTripLenInfo(int bin) { Bin = bin; Pure = 0; Access = 0; }
+    }
+
+    private RawValueBinding m_uiPedLenResults;
+    private NativeArray<PedTripLenInfo> m_PedLenResults;
+
+    private static void WritePedLen(IJsonWriter writer, PedTripLenInfo info)
+    {
+        writer.TypeBegin("PedTripLenInfo");
+        writer.PropertyName("bin"); writer.Write(info.Bin);
+        writer.PropertyName("pure"); writer.Write(info.Pure);
+        writer.PropertyName("access"); writer.Write(info.Access);
+        writer.TypeEnd();
+    }
+
+
     public enum linkedMode
     {
         Vehicle,
@@ -126,6 +148,9 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
     private NativeArray<PKTInfo> m_PKTResults; // final results, will be filled via jobs and then written as output
     private NativeArray<TransferInfo> m_TransfersResults;
 
+    const int PED_METERS_PER_BIN = 200;
+
+
     // 240209 Set gameMode to avoid errors in the Editor
     public override GameMode gameMode => GameMode.Game;
 
@@ -176,6 +201,21 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
         m_Results = new NativeArray<LinkedTripsInfo>(3, Allocator.Persistent);
         m_PKTResults = new NativeArray<PKTInfo>(9, Allocator.Persistent);
         m_TransfersResults = new NativeArray<TransferInfo>(1, Allocator.Persistent);
+
+        AddBinding(m_uiPedLenResults = new RawValueBinding(kGroup, "pedestrianDistanceDetails", binder =>
+        {
+            binder.ArrayBegin(m_PedLenResults.Length);
+            for (int i = 0; i < m_PedLenResults.Length; i++)
+                WritePedLen(binder, m_PedLenResults[i]);
+            binder.ArrayEnd();
+        }));
+
+        const int PED_NUM_BINS = 60;     // 0–200m … 3800–4000m
+        const int PED_METERS_PER_BIN = 200;
+        m_PedLenResults = new NativeArray<PedTripLenInfo>(PED_NUM_BINS, Allocator.Persistent);
+        for (int i = 0; i < PED_NUM_BINS; i++) m_PedLenResults[i] = new PedTripLenInfo(i * PED_METERS_PER_BIN);
+
+
         Mod.log.Info("PathTripsUISystem created.");
     }
 
@@ -185,6 +225,8 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
         m_Results.Dispose();
         m_TransfersResults.Dispose();
         m_PKTResults.Dispose();
+        m_PedLenResults.Dispose();
+
         base.OnDestroy();
     }
 
@@ -223,14 +265,38 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
     {
         return Math.Sqrt(Math.Pow(a.x - b.x, 2f) + Math.Pow(a.y - b.y, 2f) + Math.Pow(a.z - b.z, 2f));
     }
- 
+
+    // REPLACE your TryGetWorldPos with this deep owner chain lookup:
+    bool TryGetWorldPosDeep(Entity e, out float3 pos)
+    {
+        // Try the entity itself and then up to 4 owners up the chain (lane -> net lane -> segment -> etc.)
+        Entity cur = e;
+        for (int depth = 0; depth < 5; depth++)
+        {
+            if (EntityManager.TryGetComponent<Position>(cur, out Position p))
+            {
+                pos = p.m_Position;
+                return true;
+            }
+
+            // If there's no further owner, stop
+            if (!EntityManager.TryGetComponent<Owner>(cur, out Owner ow))
+                break;
+
+            cur = ow.m_Owner;
+        }
+
+        pos = -1f; // sentinel
+        return false;
+    }
+
+
+
     protected override void OnUpdate()
     {
         base.OnUpdate();
 
         Setting setting = Mod.setting;
-
-        //ResetResults();
 
         var results = m_PathTripsQuery.ToEntityArray(Allocator.Temp);
 
@@ -241,19 +307,23 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
         {
             previous_index = index;
 
-            //Last one is vehicle
+            // ---------------- existing accumulators (kept as before) ----------------
             int[,] countModes = new int[results.Length, Enum.GetNames(typeof(TransportType)).Length + 1];
-            //0: Pedestrian, 1: Vehicle
-            int[,] countRoadType = new int[results.Length, 2];
-            //O: Pedestrian, 1: Vehicle, 2: Other transit
+            int[,] countRoadType = new int[results.Length, 2]; // [k,0]=ped; [k,1]=road/vehicle
+
             int3 countAccess = 0;
             int transitLinkedTrips = 0;
             int transitUnlinkedTrips = 0;
             int vehicleLinkedTrips = 0;
             int pedLinkedTrips = 0;
+
             int[] unlinkedModeTrips = new int[Enum.GetNames(typeof(TransportType)).Length - 1];
             float[] modePKT = new float[Enum.GetNames(typeof(TransportType)).Length - 1];
             int[,] transferMatrix = new int[Enum.GetNames(typeof(TransportType)).Length - 1, Enum.GetNames(typeof(TransportType)).Length - 1];
+
+            // ---------------- new: segment-count histogram accumulators --------------
+            int[] segBinsPure = new int[m_PedLenResults.Length]; // pedestrian-only trips
+            int[] segBinsMixed = new int[m_PedLenResults.Length]; // all other trips
 
             int k = 0;
             foreach (var path in results)
@@ -265,156 +335,107 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
                 float3 currentPosition = -1f;
                 float3 previousPosition = -1f;
 
-                PathOwner pathOwner;
                 HashSet<int> routesHashSet = new HashSet<int>();
 
-                if (EntityManager.TryGetComponent<PathOwner>(path, out pathOwner))
+                if (EntityManager.TryGetComponent<PathOwner>(path, out var pathOwner))
                 {
-                    DynamicBuffer<PathElement> pathElements;
-                    if(EntityManager.TryGetBuffer<PathElement>(path, true, out pathElements))
+                    if (EntityManager.TryGetBuffer<PathElement>(path, true, out DynamicBuffer<PathElement> pathElements))
                     {
                         int totalModes = 0;
                         float distance = 0;
                         int waypoint1_index;
                         int waypoint2_index;
-                        TransportType transportType = TransportType.None;
 
+                        // Tally flags & (optionally) modes the same way we did before so
+                        // other UI metrics (linked trips / PKT / transfers) keep working.
                         for (int i = 0; i < pathElements.Length; ++i)
                         {
                             PathElement element = pathElements[i];
 
-                            Game.Net.ConnectionLane connectionLane;
-                            if (EntityManager.TryGetComponent<Game.Net.ConnectionLane>(element.m_Target, out connectionLane))
+                            if (EntityManager.TryGetComponent<Game.Net.ConnectionLane>(element.m_Target, out var cn))
                             {
-                                if ((connectionLane.m_Flags & ConnectionLaneFlags.Pedestrian) != (ConnectionLaneFlags)0)
-                                {
-                                    countRoadType[k, 0] = 1;
-                                }
-                                if ((connectionLane.m_Flags & ConnectionLaneFlags.Road) != (ConnectionLaneFlags)0)
-                                {
-                                    countRoadType[k, 1] = 1;
-                                }
+                                if ((cn.m_Flags & ConnectionLaneFlags.Pedestrian) != 0) countRoadType[k, 0] = 1;
+                                if ((cn.m_Flags & ConnectionLaneFlags.Road) != 0) countRoadType[k, 1] = 1;
                             }
-                            
+
                             if (EntityManager.TryGetComponent(element.m_Target, out Owner owner))
                             {
-
                                 if (EntityManager.HasComponent<RouteLane>(element.m_Target))
                                 {
+                                    // keep the route parsing so unlinked/PKT/transfer metrics remain valid
                                     i = getLastTransitIndex(element.m_Target, pathElements, i, out i, out waypoint1_index, out waypoint2_index);
 
-                                    RouteNumber routeNumber;
-                                    if (EntityManager.TryGetComponent<RouteNumber>(owner.m_Owner, out routeNumber))
+                                    if (EntityManager.TryGetComponent<RouteNumber>(owner.m_Owner, out RouteNumber routeNumber) &&
+                                        EntityManager.TryGetComponent<PrefabRef>(owner.m_Owner, out PrefabRef prefab1) &&
+                                        EntityManager.TryGetComponent<TransportLineData>(prefab1.m_Prefab, out TransportLineData transportLineData))
                                     {
-                                        PrefabRef prefab1;
-                                        if (EntityManager.TryGetComponent<PrefabRef>(owner.m_Owner, out prefab1))
+                                        if (routeNumber.m_Number != currentRoute)
                                         {
-                                            TransportLineData transportLineData;
-                                            if (EntityManager.TryGetComponent<TransportLineData>(prefab1.m_Prefab, out transportLineData))
+                                            if (!currentMode.Equals(TransportType.None) && distance > 0)
                                             {
-                                                if (routeNumber.m_Number != currentRoute)
+                                                float factor = 0f;
+                                                int[] distance_cat_1 = { 500, 600, 1500, 500, 200 };
+                                                int[] distance_cat_2 = { 2500, 2000, 4000, 15000, 10000 };
+                                                float[] urban_factors = { 0.25f, 0.20f, 0.15f, 0.15f, 0.25f };
+                                                float[] suburban_factors = { 0.15f, 0.15f, 0.10f, 0.075f, 0.15f };
+                                                float[] long_factors = { 0.35f, 0.25f, 0.10f, 0.075f, 0.075f };
+                                                int mode_category = 0; // bus
+
+                                                if (currentMode.Equals(TransportType.Tram)) mode_category = 1;
+                                                else if (currentMode.Equals(TransportType.Subway)) mode_category = 2;
+                                                else if (currentMode.Equals(TransportType.Train)) mode_category = 3;
+                                                else if (currentMode.Equals(TransportType.Ship)) mode_category = 4;
+
+                                                if (!currentMode.Equals(TransportType.Airplane))
                                                 {
-                                                    if (!currentMode.Equals(TransportType.None) && distance > 0)
-                                                    {
-                                                        //Estimate adjustment factor because straight line distance between waypoints is shorter than real distance
-                                                        //Factor will take into account: mode, type of trip, number of waypoints
-                                                        //factor for air is zero
-                                                        float factor = 0;
-
-                                                        //distance thresholds by mode (bus, tram, subway, train, ship) 
-                                                        //distance categories: urban, suburban, long-distance
-                                                        int[] distance_cat_1 = [500, 600, 1500, 500, 200];
-                                                        int[] distance_cat_2 = [2500, 2000, 4000, 15000, 10000];
-                                                        float[] urban_factors = [0.25f, 0.2f, 0.15f, 0.15f, 0.25f];
-                                                        float[] suburban_factors = [0.15f, 0.15f, 0.1f, 0.075f, 0.15f];
-                                                        float[] long_factors = [0.35f, 0.25f, 0.1f, 0.075f, 0.075f];
-                                                        int mode_category = 0; //zero is bus
-
-                                                        if((currentMode.Equals(TransportType.Tram)))
-                                                        {
-                                                            mode_category = 1;
-                                                        } 
-                                                        else if((currentMode.Equals(TransportType.Subway)))
-                                                        {
-                                                            mode_category = 2;
-                                                        }
-                                                        else if ((currentMode.Equals(TransportType.Train)))
-                                                        {
-                                                            mode_category = 3;
-                                                        }
-                                                        else if ((currentMode.Equals(TransportType.Ship)))
-                                                        {
-                                                            mode_category = 4;
-                                                        }
-
-                                                        if(!(currentMode.Equals(TransportType.Airplane)))
-                                                        {
-                                                            factor = urban_factors[mode_category];
-                                                            if (distance > distance_cat_1[mode_category] && distance <= distance_cat_2[mode_category])
-                                                            {
-                                                                factor = suburban_factors[mode_category]; ;
-                                                            }
-                                                            else if ( distance > distance_cat_2[mode_category])
-                                                            {
-                                                                factor = long_factors[mode_category]; ;
-                                                            }
-                                                        }
-
-                                                        if(waypoint2_index == waypoint1_index)
-                                                        {
-                                                            waypoint2_index++;
-                                                        }
-                                                        float factor2 = (float)(1f + factor / Math.Sqrt(Math.Abs(waypoint2_index - waypoint1_index)));
-                                                        
-                                                        modePKT[(int)currentMode] += (distance*factor2)/1000f;
-                                                        //Mod.log.Info($"k:{k},i:{i},distance:{distance},mode_category:{mode_category},factor:{factor},factor2:{factor2},sqrt:{Math.Sqrt((double)(waypoint2_index - waypoint1_index))},mode:{currentMode},transportType:{transportType},waypoint1_index:{waypoint1_index},waypoint2_index:{waypoint2_index}");
-                                                    }
-
-                                                    previousRoute = currentRoute;
-                                                    currentRoute = routeNumber.m_Number;
-
-                                                    previousMode = currentMode;
-                                                    currentMode = transportLineData.m_TransportType;
-                                                    
-                                                    if (!previousMode.Equals(TransportType.None) && !currentMode.Equals(TransportType.None))
-                                                    {
-                                                        transferMatrix[(int)previousMode, (int)currentMode]++;
-                                                        //Mod.log.Info($"Transfer from: {previousMode} to {currentMode}, transferMatrix:{transferMatrix[(int)previousMode, (int)currentMode]}");
-                                                    }
-                                                    unlinkedModeTrips[(int)transportLineData.m_TransportType]++;
-                                                    countModes[k, (int)transportLineData.m_TransportType] = 1;
-                                                    routesHashSet.Add(((int)transportLineData.m_TransportType) * 1000 + routeNumber.m_Number);
-                                                    transportType = transportLineData.m_TransportType;
-                                                    distance = 0;
-                                                    currentPosition = -1f;
+                                                    factor = urban_factors[mode_category];
+                                                    if (distance > distance_cat_1[mode_category] && distance <= distance_cat_2[mode_category])
+                                                        factor = suburban_factors[mode_category];
+                                                    else if (distance > distance_cat_2[mode_category])
+                                                        factor = long_factors[mode_category];
                                                 }
 
-                                                
+                                                if (waypoint2_index == waypoint1_index) waypoint2_index++;
+                                                float factor2 = (float)(1f + factor / Math.Sqrt(Math.Abs(waypoint2_index - waypoint1_index)));
+                                                modePKT[(int)currentMode] += (distance * factor2) / 1000f;
                                             }
-                                        }
 
-                                        if (EntityManager.TryGetBuffer<RouteWaypoint>(owner.m_Owner, true, out DynamicBuffer<RouteWaypoint> routeWaypoints))
-                                        {
-                                            for (int j = 0; j < routeWaypoints.Length; j++)
+                                            previousRoute = currentRoute;
+                                            currentRoute = routeNumber.m_Number;
+
+                                            previousMode = currentMode;
+                                            currentMode = transportLineData.m_TransportType;
+
+                                            if (!previousMode.Equals(TransportType.None) && !currentMode.Equals(TransportType.None))
                                             {
-                                                RouteWaypoint routeWaypoint = routeWaypoints[j];
-                                                Waypoint waypoint;
-                                                if (EntityManager.TryGetComponent<Waypoint>(routeWaypoint.m_Waypoint, out waypoint))
+                                                transferMatrix[(int)previousMode, (int)currentMode]++;
+                                            }
+
+                                            unlinkedModeTrips[(int)transportLineData.m_TransportType]++;
+                                            countModes[k, (int)transportLineData.m_TransportType] = 1;
+                                            routesHashSet.Add(((int)transportLineData.m_TransportType) * 1000 + routeNumber.m_Number);
+                                            distance = 0f;
+                                            currentPosition = -1f;
+                                        }
+                                    }
+
+                                    if (EntityManager.TryGetBuffer<RouteWaypoint>(owner.m_Owner, true, out DynamicBuffer<RouteWaypoint> routeWaypoints))
+                                    {
+                                        for (int j = 0; j < routeWaypoints.Length; j++)
+                                        {
+                                            RouteWaypoint routeWaypoint = routeWaypoints[j];
+                                            if (EntityManager.TryGetComponent<Waypoint>(routeWaypoint.m_Waypoint, out Waypoint waypoint))
+                                            {
+                                                if (EntityManager.TryGetComponent<Position>(routeWaypoint.m_Waypoint, out Position pos))
                                                 {
                                                     if (waypoint.m_Index >= waypoint1_index && waypoint.m_Index <= waypoint2_index)
                                                     {
-                                                        Position position;
-                                                        if (EntityManager.TryGetComponent<Position>(routeWaypoint.m_Waypoint, out position))
+                                                        previousPosition = currentPosition;
+                                                        currentPosition = pos.m_Position;
+                                                        if (previousPosition.x != -1f)
                                                         {
-                                                            previousPosition = currentPosition;
-                                                            currentPosition = position.m_Position;
-
-                                                            if (previousPosition.x != -1f)
-                                                            {
-                                                                distance += (float)calculateStraightDistance(previousPosition, currentPosition);
-                                                            }
-
-                                                            //Mod.log.Info($"k:{k},i:{i},j:{j},{distance},routeWaypoints:{routeWaypoints.Length},previousPosition:{previousPosition},currentPosition:{currentPosition},waypoint.m_Index:{waypoint.m_Index},waypoint1.m_Index:{waypoint1_index},waypoint2.m_Index:{waypoint2_index},mode:{currentMode},transportType:{transportType}");
+                                                            // keep distance accumulation for PKT (as before)
+                                                            distance += (float)calculateStraightDistance(previousPosition, currentPosition);
                                                         }
                                                     }
                                                 }
@@ -422,96 +443,103 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
                                         }
                                     }
                                 }
-
-                                
                             }
-                        }
+                        } // end for i
 
-                        //Transit Modes
+                        // ---------- classify trip & compute segment count bin ----------
                         totalModes += routesHashSet.Count();
 
                         if (totalModes == 0)
                         {
-                            if (countRoadType[k, 1] == 1)
-                            {
-                                vehicleLinkedTrips++;
-                            }
-                            else if (countRoadType[k, 0] == 1 && countRoadType[k, 1] == 0)
-                            {
-                                pedLinkedTrips++;
-                            }
+                            if (countRoadType[k, 1] == 1) vehicleLinkedTrips++;
+                            else if (countRoadType[k, 0] == 1 && countRoadType[k, 1] == 0) pedLinkedTrips++;
                         }
 
-                        if(countRoadType[k, 1] == 1 && routesHashSet.Count() >= 1)
-                        {
-                            countAccess.y++;
-                        }
-                        else if(routesHashSet.Count() > 1)
-                        {
-                            countAccess.z++;
-                        }
-                        else if(routesHashSet.Count() == 1)
-                        {
-                            countAccess.x++;
-                        }
+                        if (countRoadType[k, 1] == 1 && routesHashSet.Count() >= 1) countAccess.y++;
+                        else if (routesHashSet.Count() > 1) countAccess.z++;
+                        else if (routesHashSet.Count() == 1) countAccess.x++;
 
                         if (totalModes >= 1)
                         {
                             transitLinkedTrips++;
                             transitUnlinkedTrips += totalModes;
                         }
+
+                        // Segment count for THIS trip:
+                        int segmentCount = pathElements.Length;
+
+                        // Map to histogram bin: 1→bin0, 2→bin1, ..., (N or more)→last bin
+                        int binIndex = segmentCount - 1;
+                        if (binIndex < 0) binIndex = 0;
+                        if (binIndex >= m_PedLenResults.Length) binIndex = m_PedLenResults.Length - 1;
+
+                        // Define "pure pedestrian" trip as before (touches ped lanes, no road/vehicle, no transit)
+                        bool isPurePedTrip = (countRoadType[k, 1] == 0) && (routesHashSet.Count() == 0) && (countRoadType[k, 0] == 1);
+
+                        if (isPurePedTrip) segBinsPure[binIndex]++;
+                        else segBinsMixed[binIndex]++;
                     }
                 }
+
                 k++;
-            }
+            } // foreach path
 
-
+            // ---------------- existing: linked trips shares ----------------
             LinkedTripsInfo info = new LinkedTripsInfo((int)linkedMode.Vehicle);
-            info.Trips = (int)(10 * Math.Round((100 * (vehicleLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips))), 1));
+            info.Trips = (int)(10 * Math.Round(100 * (vehicleLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips)), 1));
             m_Results[(int)linkedMode.Vehicle] = info;
+
             info = new LinkedTripsInfo((int)linkedMode.Transit);
-            info.Trips = (int)(10 * Math.Round((100 * (transitLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips))), 1));
+            info.Trips = (int)(10 * Math.Round(100 * (transitLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips)), 1));
             m_Results[(int)linkedMode.Transit] = info;
+
             info = new LinkedTripsInfo((int)linkedMode.Pedestrian);
-            info.Trips = (int)(10 * Math.Round((100 * (pedLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips))), 1));
+            info.Trips = (int)(10 * Math.Round(100 * (pedLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips)), 1));
             m_Results[(int)linkedMode.Pedestrian] = info;
 
-
+            // ---------------- existing: PKT by mode ------------------------
             List<int> transports = new() { (int)TransportType.Bus, (int)TransportType.Tram, (int)TransportType.Subway, (int)TransportType.Train, (int)TransportType.Ship, (int)TransportType.Airplane };
-            PKTInfo pktInfo;
             foreach (int t in transports)
             {
                 int pkt = (int)Math.Round(modePKT[t]);
                 if (pkt > 0)
                 {
-                    pktInfo = new PKTInfo(t);
+                    var pktInfo = new PKTInfo(t);
                     pktInfo.PKT = pkt;
                     m_PKTResults[t] = pktInfo;
                 }
             }
 
-
-            TransferInfo info2 = new TransferInfo(0);
-            if(transitLinkedTrips > 0)
-            {
+            // ---------------- existing: Transfers metric -------------------
+            var info2 = new TransferInfo(0);
+            if (transitLinkedTrips > 0)
                 info2.Trips = (int)(100 * Math.Round(((float)transitUnlinkedTrips) / transitLinkedTrips, 2)) - 100;
-            } else
-            {
+            else
                 info2.Trips = 0;
-            }
-            
             m_TransfersResults[0] = info2;
-            //for (int t = 0; t < Enum.GetNames(typeof(TransportType)).Length - 1; t++)
-            //{
-            //    Mod.log.Info($"t:{(TransportType)t},Linked: {linkedModeTrips[t]}, Unlinked:{unlinkedModeTrips[t]}, trasnfer rate:{unlinkedModeTrips[t]/(float)linkedModeTrips[t] - 1f}");
-            //}
-            //Mod.log.Info($"Unlinked:{transitUnlinkedTrips}, LInked:{transitLinkedTrips}, transfers:{info2.Trips}, VehicleLinked:{vehicleLinkedTrips}, PedLinked:{pedLinkedTrips}");
-        }
 
-        m_uiResults.Update();
-        m_uiTransfersResults.Update();
-        m_uiPKTResults.Update();
+            // ---------------- push the segment-count histogram --------------
+            for (int i = 0; i < m_PedLenResults.Length; i++)
+            {
+                var row = m_PedLenResults[i];
+
+                // Update the label to show "segment count" (1, 2, 3, ... , N)
+                row.Bin = i + 1;
+
+                row.Pure = segBinsPure[i];
+                row.Access = segBinsMixed[i];
+                m_PedLenResults[i] = row;
+            }
+
+            // ---------------- push UI bindings -----------------------------
+            m_uiResults.Update();
+            m_uiPKTResults.Update();
+            m_uiTransfersResults.Update();
+            m_uiPedLenResults.Update();
+        }
     }
+
+
 
     private void ResetResults()
     {

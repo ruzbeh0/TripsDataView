@@ -59,15 +59,14 @@ Frequency distribution of commute time for workers and categorized by education 
 	<!--Link to the forum post where the mod can be discussed-->
 	<ForumLink Value="https://forum.paradoxplaza.com/forum/threads/trips-view-mod.1720582/" />
 	<!--Version of the mod-->
-	<ModVersion Value="0.3" />
+	<ModVersion Value="0.3.1" />
 	<!--Recommended version of the base game to use the mod-->
 	<GameVersion Value="1.2.*" />
 	<!--Dependency for the mod, can be set multiple times-->
 	<Dependency Id="" />
 	<!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
 	<ChangeLog>
-* Added Passenger Kilometers Travelled bar chart
-* Added several tooltips
+* Disabled save of temporary data during auto-saves
 	</ChangeLog>
 	<!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdin, gitlab-->
 	<ExternalLink Type="github" Url="https://github.com/ruzbeh0/TripsDataView" />
