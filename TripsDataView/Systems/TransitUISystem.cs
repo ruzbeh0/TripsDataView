@@ -365,45 +365,43 @@ public partial class TransitUISystem : ExtendedUISystemBase
                         }
                     }
 
-                    if (EntityManager.TryGetComponent<VehicleModel>(veh, out vehicleModel))
+                    if (TryGetPrimaryVehiclePrefab(veh, out var primaryPrefab) &&
+                        EntityManager.TryGetComponent<PublicTransportVehicleData>(primaryPrefab, out publicTransportVehicleData))
                     {
-                        if (EntityManager.TryGetComponent<PublicTransportVehicleData>(vehicleModel.m_PrimaryPrefab, out publicTransportVehicleData))
+                        DynamicBuffer<RouteVehicle> vehicles = EntityManager.GetBuffer<RouteVehicle>(veh);
+
+                        for (int i = 0; i < vehicles.Length; i++)
                         {
-                            DynamicBuffer<RouteVehicle> vehicles = EntityManager.GetBuffer<RouteVehicle>(veh);
+                            RouteVehicle vehicle = vehicles[i];
 
-                            for (int i = 0; i < vehicles.Length; i++)
+                            DynamicBuffer<Passenger> pax = EntityManager.GetBuffer<Passenger>(vehicle.m_Vehicle);
+                            if (transportLineData.m_TransportType.Equals(TransportType.Bus))
                             {
-                                RouteVehicle vehicle = vehicles[i];
-
-                                DynamicBuffer<Passenger> pax = EntityManager.GetBuffer<Passenger>(vehicle.m_Vehicle);
-                                if (transportLineData.m_TransportType.Equals(TransportType.Bus))
-                                {
-                                    bus += pax.Length;
-                                }
-                                if (transportLineData.m_TransportType.Equals(TransportType.Subway))
-                                {
-                                    subway += pax.Length;
-                                }
-                                if (transportLineData.m_TransportType.Equals(TransportType.Tram))
-                                {
-                                    tram += pax.Length;
-                                }
-                                if (transportLineData.m_TransportType.Equals(TransportType.Train))
-                                {
-                                    train += pax.Length;
-                                }
-                                if (transportLineData.m_TransportType.Equals(TransportType.Airplane))
-                                {
-                                    airplane += pax.Length;
-                                }
-                                if (transportLineData.m_TransportType.Equals(TransportType.Ship))
-                                {
-                                    ship += pax.Length;
-                                }
-                                
+                                bus += pax.Length;
+                            }
+                            if (transportLineData.m_TransportType.Equals(TransportType.Subway))
+                            {
+                                subway += pax.Length;
+                            }
+                            if (transportLineData.m_TransportType.Equals(TransportType.Tram))
+                            {
+                                tram += pax.Length;
+                            }
+                            if (transportLineData.m_TransportType.Equals(TransportType.Train))
+                            {
+                                train += pax.Length;
+                            }
+                            if (transportLineData.m_TransportType.Equals(TransportType.Airplane))
+                            {
+                                airplane += pax.Length;
+                            }
+                            if (transportLineData.m_TransportType.Equals(TransportType.Ship))
+                            {
+                                ship += pax.Length;
                             }
                         }
                     }
+
                 }
             }
 
@@ -459,6 +457,31 @@ public partial class TransitUISystem : ExtendedUISystemBase
 
         m_uiTransitPaxResults.Update();
         m_uiTransitWaitingResults.Update();
+    }
+
+    private bool TryGetPrimaryVehiclePrefab(Entity e, out Entity primaryPrefab)
+    {
+        primaryPrefab = Entity.Null;
+
+        if (EntityManager.TryGetBuffer<VehicleModel>(e, true, out var vehicleModels) && vehicleModels.Length > 0)
+        {
+            // Prefer the first non-null primary prefab in the buffer
+            for (int i = 0; i < vehicleModels.Length; i++)
+            {
+                var vm = vehicleModels[i];
+                if (vm.m_PrimaryPrefab != Entity.Null)
+                {
+                    primaryPrefab = vm.m_PrimaryPrefab;
+                    break;
+                }
+            }
+
+            // Fallback to element 0 even if the loop didn’t find a non-null (defensive)
+            if (primaryPrefab == Entity.Null)
+                primaryPrefab = vehicleModels[0].m_PrimaryPrefab;
+        }
+
+        return primaryPrefab != Entity.Null;
     }
 
     private void ResetResults()
