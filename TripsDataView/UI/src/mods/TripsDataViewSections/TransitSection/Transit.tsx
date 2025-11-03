@@ -33,6 +33,7 @@ interface Info {
   train: number; 
   ship: number;
   airplane: number;
+  ferry: number;
 }
 
 
@@ -46,6 +47,7 @@ interface AggregatedInfo {
   train: number;
   ship: number;
   airplane: number;
+  ferry: number;
 }
 
 // Define a common font configuration
@@ -79,6 +81,7 @@ const aggregateDataByHourRanges = (details: Info[]): AggregatedInfo[] => {
     train: 0,
     ship: 0,
     airplane: 0,
+    ferry: 0,
   }));
 
   details.forEach(info => {
@@ -97,6 +100,7 @@ const aggregateDataByHourRanges = (details: Info[]): AggregatedInfo[] => {
       agg.train += info.train;
       agg.ship += info.ship;
       agg.airplane += info.airplane;
+      agg.ferry += info.ferry;
     }
   });
 
@@ -117,6 +121,7 @@ const groupDetailsByHour = (details: Info[]): AggregatedInfo[] => {
         train: 0,
         ship: 0,
         airplane: 0,
+        ferry: 0,
       };
     }
     const agg = acc[hour];
@@ -127,6 +132,7 @@ const groupDetailsByHour = (details: Info[]): AggregatedInfo[] => {
     agg.train += info.train;
     agg.ship += info.ship;
     agg.airplane += info.airplane;
+    agg.ferry += info.ferry;
     return acc;
   }, {});
 
@@ -165,6 +171,7 @@ const TransitLevel: React.FC<{
     train: number;
     ship: number;
     airplane: number;
+    ferry: number;
   };
   total: number;
 }> = ({ levelColor, levelName, levelValues, total }) => (
@@ -206,6 +213,9 @@ const TransitLevel: React.FC<{
     </div>
     <div className="row_S2v" style={{ width: '12%', justifyContent: 'center' }}>
       {levelValues.airplane}
+    </div>
+    <div className="row_S2v" style={{ width: '12%', justifyContent: 'center' }}>
+      {levelValues.ferry}
     </div>
   </div>
 );
@@ -269,7 +279,12 @@ const Transit: FC<TransitProps> = ({ onClose }) => {
             label: 'Airplane',
             data: sortedHours.map(data => data.airplane),
             backgroundColor: '#BF00FF',
-        },
+         },
+         {
+             label: 'Ferry',
+             data: sortedHours.map(data => data.ferry),
+             backgroundColor: '#FFD700',
+         },
       ],
     };
   }, [details]);
@@ -310,7 +325,12 @@ const Transit: FC<TransitProps> = ({ onClose }) => {
           label: 'Airplane',
           data: aggregated.map(data => data.airplane),
           backgroundColor: '#BF00FF',
-        },
+         },
+         {
+          label: 'Ferry',
+          data: aggregated.map(data => data.ferry),
+          backgroundColor: '#FFD700',
+         },
       ],
     };
   }, [details]);
@@ -545,6 +565,9 @@ const Transit: FC<TransitProps> = ({ onClose }) => {
               <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
                 Airplane
               </div>
+              <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
+                  Ferry
+              </div>
             </div>
 
             {/* Summary Rows */}
@@ -561,6 +584,7 @@ const Transit: FC<TransitProps> = ({ onClose }) => {
                   train: stat.train,
                   ship: stat.ship,
                   airplane: stat.airplane,
+                  ferry: stat.ferry,
                 }}
                 total={stat.total}
               />

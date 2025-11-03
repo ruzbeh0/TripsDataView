@@ -36,6 +36,7 @@ const modeLabels: { [key: number]: string } = {
     1: "Train",
     4: "Ship",
     7: "Airplane",
+    11: "Ferry",
 };
 
 // Define aggregated info interface

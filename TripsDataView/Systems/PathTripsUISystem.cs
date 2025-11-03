@@ -199,7 +199,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
         }));
 
         m_Results = new NativeArray<LinkedTripsInfo>(3, Allocator.Persistent);
-        m_PKTResults = new NativeArray<PKTInfo>(9, Allocator.Persistent);
+        m_PKTResults = new NativeArray<PKTInfo>(16, Allocator.Persistent);
         m_TransfersResults = new NativeArray<TransferInfo>(1, Allocator.Persistent);
 
         AddBinding(m_uiPedLenResults = new RawValueBinding(kGroup, "pedestrianDistanceDetails", binder =>
@@ -498,7 +498,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             m_Results[(int)linkedMode.Pedestrian] = info;
 
             // ---------------- existing: PKT by mode ------------------------
-            List<int> transports = new() { (int)TransportType.Bus, (int)TransportType.Tram, (int)TransportType.Subway, (int)TransportType.Train, (int)TransportType.Ship, (int)TransportType.Airplane };
+            List<int> transports = new() { (int)TransportType.Bus, (int)TransportType.Tram, (int)TransportType.Subway, (int)TransportType.Train, (int)TransportType.Ship, (int)TransportType.Airplane, (int)TransportType.Ferry };
             foreach (int t in transports)
             {
                 int pkt = (int)Math.Round(modePKT[t]);

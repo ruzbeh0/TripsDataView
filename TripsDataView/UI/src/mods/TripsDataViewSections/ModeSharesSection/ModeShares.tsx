@@ -225,6 +225,10 @@ const LinkedTrips: FC<LinkedTripsProps> = ({ onClose }) => {
                     <LinkedTripsMode
                         levelName="Airplane"
                         levelValues={unlinkedTrips[5]}
+                        />
+                    <LinkedTripsMode
+                        levelName="Ferry"
+                        levelValues={unlinkedTrips[6]}
                     />
                     <DataDivider />
                     <div style={{ height: '5rem' }}></div>

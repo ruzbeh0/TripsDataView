@@ -53,7 +53,8 @@ public partial class TransitUISystem : ExtendedUISystemBase
         public int Subway;
         public int Train;
         public int Ship;
-        public int Airplane; 
+        public int Airplane;
+        public int Ferry;
         public TransitByHourInfo(int _hour) { Hour = _hour; }
     }
 
@@ -67,6 +68,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
         public int Train;
         public int Ship;
         public int Airplane;
+        public int Ferry;
         public WaitingTimeBinInfo(int _timeBin) { TimeBin = _timeBin; }
     }
 
@@ -77,7 +79,8 @@ public partial class TransitUISystem : ExtendedUISystemBase
         Subway,
         Train,
         Ship,
-        Airplane
+        Airplane,
+        Ferry
     }
 
     private struct UnlinkedTripsInfo
@@ -117,6 +120,8 @@ public partial class TransitUISystem : ExtendedUISystemBase
         writer.Write(info.Ship);
         writer.PropertyName("airplane");
         writer.Write(info.Airplane);
+        writer.PropertyName("ferry");
+        writer.Write(info.Ferry);
         writer.TypeEnd();
     }
 
@@ -139,6 +144,8 @@ public partial class TransitUISystem : ExtendedUISystemBase
         writer.Write(info.Ship);
         writer.PropertyName("airplane");
         writer.Write(info.Airplane);
+        writer.PropertyName("ferry");
+        writer.Write(info.Ferry);
         writer.TypeEnd();
     }
 
@@ -208,7 +215,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
 
         m_TransitPaxResults = new NativeArray<TransitByHourInfo>(24, Allocator.Persistent);
         m_TransitWaitingResults = new NativeArray<WaitingTimeBinInfo>(60, Allocator.Persistent);
-        m_TransitUnlinkedResults = new NativeArray<UnlinkedTripsInfo>(6, Allocator.Persistent);
+        m_TransitUnlinkedResults = new NativeArray<UnlinkedTripsInfo>(7, Allocator.Persistent);
         Mod.log.Info("TransitUISystem created.");
     }
 
@@ -216,6 +223,8 @@ public partial class TransitUISystem : ExtendedUISystemBase
     protected override void OnDestroy()
     {
         m_TransitPaxResults.Dispose();
+        m_TransitWaitingResults.Dispose();
+        m_TransitUnlinkedResults.Dispose();
         base.OnDestroy();
     }
 
@@ -256,7 +265,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
 
         if (!File.Exists(fileNameTransitPax))
         {
-            string header = "hour,bus,tram,subway,train,ship,airplane";
+            string header = "hour,bus,tram,subway,train,ship,airplane,ferry";
 
             Utils.createAndDeleteFiles(fileNameTransitPax, header, Mod.transit_passengers);
 
@@ -286,7 +295,13 @@ public partial class TransitUISystem : ExtendedUISystemBase
                                 info.Ship = Int32.Parse(parts[5]);
                                 info.Airplane = Int32.Parse(parts[6]);
                                 info.Total = info.Bus + info.Subway + info.Train + info.Tram + info.Airplane + info.Ship;
-                                m_TransitPaxResults[Int32.Parse(parts[0])] = info;
+                                if(parts.Length > 7)
+                                {
+                                    info.Ferry = Int32.Parse(parts[7]);
+                                    info.Total += info.Ferry;
+                                }
+
+                                 m_TransitPaxResults[Int32.Parse(parts[0])] = info;
                             }
                         }
                         i++;
@@ -304,13 +319,14 @@ public partial class TransitUISystem : ExtendedUISystemBase
             int train = 0;
             int airplane = 0;
             int ship = 0;
+            int ferry = 0;
 
-            //Modes in order: bus, tram, subway, train, ship, airplane
-            int[] waiting = new int[6];
-            float[] waiting_time = new float[6];
+            //Modes in order: bus, tram, subway, train, ship, airplane, ferry
+            int[] waiting = new int[7];
+            float[] waiting_time = new float[7];
 
             int bin_size = 30;
-            int[,] waiting_bins = new int[bin_size, 6];
+            int[,] waiting_bins = new int[bin_size, 7];
             float minutes_in_bin = 5f;
 
             foreach (var veh in results)
@@ -348,6 +364,10 @@ public partial class TransitUISystem : ExtendedUISystemBase
                     if (transportLineData.m_TransportType.Equals(TransportType.Airplane))
                     {
                         mode = 5;
+                    }
+                    if (transportLineData.m_TransportType.Equals(TransportType.Ferry))
+                    {
+                        mode = 6;
                     }
 
                     for (int i = 0; i < waypoints.Length; i++)
@@ -399,6 +419,10 @@ public partial class TransitUISystem : ExtendedUISystemBase
                             {
                                 ship += pax.Length;
                             }
+                            if (transportLineData.m_TransportType.Equals(TransportType.Ferry))
+                            {
+                                ferry += pax.Length;
+                            }
                         }
                     }
 
@@ -412,10 +436,11 @@ public partial class TransitUISystem : ExtendedUISystemBase
             info.Tram = tram;
             info.Airplane = airplane;
             info.Ship = ship;
-            info.Total = bus + subway + train + tram + airplane + ship;
+            info.Ferry = ferry;
+            info.Total = bus + subway + train + tram + airplane + ship + ferry;
             m_TransitPaxResults[index] = info;
 
-            string line = $"{index},{bus},{tram},{subway},{train},{ship},{airplane}";
+            string line = $"{index},{bus},{tram},{subway},{train},{ship},{airplane},{ferry}";
 
             using (StreamWriter sw = File.AppendText(fileNameTransitPax))
             {
@@ -424,23 +449,26 @@ public partial class TransitUISystem : ExtendedUISystemBase
 
             //Write Mode Shares for Unlined Trips
             UnlinkedTripsInfo info2 = new UnlinkedTripsInfo((int)unlinkedMode.Bus);
-            info2.Trips = (int)(10*Math.Round(100 * (bus / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            info2.Trips = (int)(10*Math.Round(100 * (bus / (float)(bus + subway + train + tram + airplane + ship + ferry)), 1));
             m_TransitUnlinkedResults[(int)unlinkedMode.Bus] = info2;
             info2 = new UnlinkedTripsInfo((int)unlinkedMode.Subway);
-            info2.Trips = (int)(10 * Math.Round(100 * (subway / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            info2.Trips = (int)(10 * Math.Round(100 * (subway / (float)(bus + subway + train + tram + airplane + ship + ferry)), 1));
             m_TransitUnlinkedResults[(int)unlinkedMode.Subway] = info2;
             info2 = new UnlinkedTripsInfo((int)unlinkedMode.Tram);
-            info2.Trips = (int)(10 * Math.Round(100 * (tram / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            info2.Trips = (int)(10 * Math.Round(100 * (tram / (float)(bus + subway + train + tram + airplane + ship + ferry)), 1));
             m_TransitUnlinkedResults[(int)unlinkedMode.Tram] = info2;
             info2 = new UnlinkedTripsInfo((int)unlinkedMode.Train);
-            info2.Trips = (int)(10 * Math.Round(100 * (train / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            info2.Trips = (int)(10 * Math.Round(100 * (train / (float)(bus + subway + train + tram + airplane + ship + ferry)), 1));
             m_TransitUnlinkedResults[(int)unlinkedMode.Train] = info2;
             info2 = new UnlinkedTripsInfo((int)unlinkedMode.Ship);
-            info2.Trips = (int)(10 * Math.Round(100 * (ship / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            info2.Trips = (int)(10 * Math.Round(100 * (ship / (float)(bus + subway + train + tram + airplane + ship + ferry)), 1));
             m_TransitUnlinkedResults[(int)unlinkedMode.Ship] = info2;
             info2 = new UnlinkedTripsInfo((int)unlinkedMode.Airplane);
-            info2.Trips = (int)(10 * Math.Round(100 * (airplane / (float)(bus + subway + train + tram + airplane + ship)), 1));
+            info2.Trips = (int)(10 * Math.Round(100 * (airplane / (float)(bus + subway + train + tram + airplane + ship + ferry)), 1));
             m_TransitUnlinkedResults[(int)unlinkedMode.Airplane] = info2;
+            info2 = new UnlinkedTripsInfo((int)unlinkedMode.Ferry);
+            info2.Trips = (int)(10 * Math.Round(100 * (ferry / (float)(bus + subway + train + tram + airplane + ship + ferry)), 1));
+            m_TransitUnlinkedResults[(int)unlinkedMode.Ferry] = info2;
 
             for (int i = 0; i < bin_size; i++)
             {
@@ -451,6 +479,7 @@ public partial class TransitUISystem : ExtendedUISystemBase
                 infoW.Train = waiting_bins[i, 3];
                 infoW.Ship = waiting_bins[i, 4];
                 infoW.Airplane = waiting_bins[i, 5];
+                infoW.Ferry = waiting_bins[i, 6];
                 m_TransitWaitingResults[i] = infoW;
             }
         }

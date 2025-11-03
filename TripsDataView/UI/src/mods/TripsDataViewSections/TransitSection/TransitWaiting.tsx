@@ -33,6 +33,7 @@ interface Info {
   train: number; 
   ship: number;
   airplane: number;
+  ferry: number;
 }
 
 
@@ -46,6 +47,7 @@ interface AggregatedInfo {
   train: number;
   ship: number;
   airplane: number;
+  ferry: number;
 }
 
 // Define a common font configuration
@@ -82,6 +84,7 @@ const aggregateDataBytimeBinRanges = (details: Info[]): AggregatedInfo[] => {
     train: 0,
     ship: 0,
     airplane: 0,
+    ferry: 0,
   }));
 
   details.forEach(info => {
@@ -100,6 +103,7 @@ const aggregateDataBytimeBinRanges = (details: Info[]): AggregatedInfo[] => {
       agg.train += info.train;
       agg.ship += info.ship;
       agg.airplane += info.airplane;
+      agg.ferry += info.ferry;
     }
   });
 
@@ -120,6 +124,7 @@ const groupDetailsBytimeBin = (details: Info[]): AggregatedInfo[] => {
         train: 0,
         ship: 0,
         airplane: 0,
+        ferry: 0,
       };
     }
     const agg = acc[timeBin];
@@ -130,6 +135,7 @@ const groupDetailsBytimeBin = (details: Info[]): AggregatedInfo[] => {
     agg.train += info.train;
     agg.ship += info.ship;
     agg.airplane += info.airplane;
+    agg.ferry += info.ferry;
     return acc;
   }, {});
 
@@ -168,6 +174,7 @@ const TransitWaitingLevel: React.FC<{
     train: number;
     ship: number;
     airplane: number;
+    ferry: number;
   };
   total: number;
 }> = ({ levelColor, levelName, levelValues, total }) => (
@@ -269,9 +276,14 @@ const TransitWaiting: FC<TransitWaitingProps> = ({ onClose }) => {
           backgroundColor: '#2EB8B8',
         },
         {
-            label: 'Airplane',
-            data: sortedtimeBins.map(data => data.airplane),
-            backgroundColor: '#BF00FF',
+          label: 'Airplane',
+          data: sortedtimeBins.map(data => data.airplane),
+          backgroundColor: '#BF00FF',
+        },
+        {
+            label: 'Ferry',
+            data: sortedtimeBins.map(data => data.ferry),
+            backgroundColor: '#FFD700',
         },
       ],
     };
@@ -310,9 +322,14 @@ const TransitWaiting: FC<TransitWaitingProps> = ({ onClose }) => {
           backgroundColor: '#2EB8B8',
         },
         {
-          label: 'Airplane',
-          data: aggregated.map(data => data.airplane),
-          backgroundColor: '#BF00FF',
+        label: 'Airplane',
+        data: aggregated.map(data => data.airplane),
+        backgroundColor: '#BF00FF',
+        },
+        {
+            label: 'Ferry',
+            data: aggregated.map(data => data.ferry),
+            backgroundColor: '#FFD700',
         },
       ],
     };
@@ -548,6 +565,9 @@ const TransitWaiting: FC<TransitWaitingProps> = ({ onClose }) => {
               <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
                 Airplane
               </div>
+              <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
+                  Ferry
+              </div>
             </div>
 
             {/* Summary Rows */}
@@ -564,6 +584,7 @@ const TransitWaiting: FC<TransitWaitingProps> = ({ onClose }) => {
                   train: stat.train,
                   ship: stat.ship,
                   airplane: stat.airplane,
+                  ferry: stat.airplane,
                 }}
                 total={stat.total}
               />

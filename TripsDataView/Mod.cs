@@ -73,6 +73,7 @@ namespace TripsDataView
             updateSystem.UpdateAt<TripsDataView.Systems.TripPurposeTempFileSaveSystem>(SystemUpdatePhase.Serialize);
             updateSystem.UpdateAt<TripsDataView.Systems.CommuteTimeUISystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateAt<TripsDataView.Systems.PathTripsUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<TripsDataView.Systems.ODMatrixUISystem>(SystemUpdatePhase.UIUpdate);
         }
 
         // Method that runs when the mod is disposed of

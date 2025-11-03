@@ -8,6 +8,7 @@ import PKT from "mods/TripsDataViewSections/TransitSection/PKT";
 import TripPurpose from "mods/TripsDataViewSections/TripPurposeSection/TripPurpose";
 import CommuteTime from "mods/TripsDataViewSections/CommuteTimeSection/CommuteTime";
 import ModeShares from "mods/TripsDataViewSections/ModeSharesSection/ModeShares";
+import ODMatrix from "mods/TripsDataViewSections/ODMatrixSection/ODMatrix";
 
 type Section =
     | 'Mode Shares'
@@ -16,7 +17,8 @@ type Section =
     | 'Transit PKT'
     | 'Trip Purpose'
     | 'Commute Time'
-    | 'Pedestrian Trip Lengths';
+    | 'Pedestrian Trip Lengths'
+    | 'OD Matrix';
 
 // Define a new type for components that accept an onClose prop
 type SectionComponentProps = {
@@ -31,6 +33,7 @@ const sections: { name: Section; displayName: string; component: FC<SectionCompo
   { name: 'Transit PKT', displayName: 'PKT', component: PKT },
   { name: 'Trip Purpose', displayName: 'TripPurpose', component: TripPurpose },
   { name: 'Commute Time', displayName: 'CommuteTime', component: CommuteTime },
+  { name: 'OD Matrix', displayName: 'ODMatrix', component: ODMatrix },
 ];
 
 const TripsDataViewButton: FC = () => {
@@ -43,6 +46,7 @@ const TripsDataViewButton: FC = () => {
     'Trip Purpose': false,
     'Commute Time': false,
     'Pedestrian Trip Lengths': false,
+    'OD Matrix': false,
 });
 
   const toggleMainMenu = useCallback(() => {
@@ -64,6 +68,7 @@ const TripsDataViewButton: FC = () => {
         'Trip Purpose': 'Purpose of trips based on origin and destination',
         'Commute Time': 'Time spent commuting',
         'Pedestrian Trip Lengths': 'Histogram of walking distances (full vs access/egress)',
+        'OD Matrix': 'Origin-Destination matrix showing trip counts between districts',
     };
 
     return (
