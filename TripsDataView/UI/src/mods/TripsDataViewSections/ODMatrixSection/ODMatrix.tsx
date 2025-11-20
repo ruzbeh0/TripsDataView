@@ -14,7 +14,23 @@ const PADDING = 12;
 const HEADER_ROT_DEG = -90;   // <-- back to vertical
 const FOOT_H = 34;
 
-const font = { family: 'Inter, Arial, sans-serif', size: 12 };
+const font = {
+    family: [
+        'Inter',
+        '"Noto Sans CJK SC"',
+        '"Noto Sans CJK JP"',
+        '"Microsoft YaHei"',
+        '"PingFang SC"',
+        '"SimHei"',
+        'system-ui',
+        '-apple-system',
+        'BlinkMacSystemFont',
+        '"Segoe UI"',
+        'Arial',
+        'sans-serif',
+    ].join(', '),
+    size: 12,
+};
 
 /* utils */
 function parseRGBAny(s: string): [number, number, number] | null {
@@ -119,14 +135,37 @@ const ODMatrix: FC<ODMatrixProps> = ({ onClose }) => {
 
     return (
         <$Panel
-            title="OD Matrix - Origin Destination by Districts"
+            title="Origin Destination Matrix by Districts"
             onClose={handleClose}
             initialSize={{ width: panWidth, height: panHeight }}
             initialPosition={{ top: window.innerHeight * 0.009, left: window.innerWidth * 0.053 }}
-            style={{ backgroundColor: 'var(--panelColorNormal)', display: 'flex', flexDirection: 'column', overflow: 'hidden', margin: '3rem' }}
+            style={{
+                backgroundColor: 'var(--panelColorNormal)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                margin: '3rem',
+                // These two help avoid flexbox “no scroll” issues:
+                minWidth: 0,
+                minHeight: 0,
+            }}
         >
-            <div style={{ flex: '1 1 auto', overflow: 'auto', padding: '1rem' }}>
-                <svg width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ display: 'block' }}>
+            <div
+                style={{
+                    flex: '1 1 auto',
+                    padding: '1rem',
+                    overflow: 'auto',
+                    // Ensure this element is allowed to be smaller than the panel
+                    minWidth: 0,
+                    minHeight: 0,
+                }}
+            >
+                <svg
+                    width={svgWidth}
+                    height={svgHeight}
+                    viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                    style={{ display: 'block' }}
+                >
                     <rect x={0} y={0} width={svgWidth} height={svgHeight} fill="rgba(0,0,0,0.3)" />
                     <g transform={`translate(${PADDING}, ${PADDING})`}>
                         {/* bands */}
@@ -241,3 +280,5 @@ const ODMatrix: FC<ODMatrixProps> = ({ onClose }) => {
 };
 
 export default ODMatrix;
+
+

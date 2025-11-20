@@ -44,6 +44,10 @@ Trip purposes is classified in four categories which are explained below. The nu
 
 Frequency distribution of commute time for workers and categorized by education level. The data is grouped in 10 minute bins the label shown on the bin represents the start of that bin. For example, bin 10 represents trips that took between 10 and 19 minutes.
 
+## Origin-Destination Matrix
+
+This table shows the origin and destination of trips grouped by district. The rows represent origin, and columns represents destinations. Trips that are have their origin or destination outside a district or from an outside connection will be shown as other.
+
 ## Credits
 * This mod was based on the Info Loom mod by Bruceyboy24804
 	</LongDescription>
@@ -54,19 +58,21 @@ Frequency distribution of commute time for workers and categorized by education 
 	<Screenshot Value="Properties/Screenshots/trippurpose.png" />
 	<Screenshot Value="Properties/Screenshots/commute.png" />
 	<Screenshot Value="Properties/Screenshots/modesharewaiting.png" />
+	<Screenshot Value="Properties/Screenshots/odmatrix.png" />
 	<!--Tag, can be set multiple times-->
 	<Tag Value="" />
 	<!--Link to the forum post where the mod can be discussed-->
 	<ForumLink Value="https://forum.paradoxplaza.com/forum/threads/trips-view-mod.1720582/" />
 	<!--Version of the mod-->
-	<ModVersion Value="0.3.2" />
+	<ModVersion Value="0.4.2" />
 	<!--Recommended version of the base game to use the mod-->
-	<GameVersion Value="1.2.*" />
+	<GameVersion Value="1.3.*" />
 	<!--Dependency for the mod, can be set multiple times-->
 	<Dependency Id="" />
 	<!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
 	<ChangeLog>
-* Updated for game version 1.3.6f1
+* Updated for game version 1.4.2
+* Added bicycle to mode shares panel
 	</ChangeLog>
 	<!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdin, gitlab-->
 	<ExternalLink Type="github" Url="https://github.com/ruzbeh0/TripsDataView" />

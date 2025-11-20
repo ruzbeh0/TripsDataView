@@ -77,6 +77,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
     {
         Vehicle,
         Transit,
+        Bicycle,
         Pedestrian
     }
 
@@ -198,7 +199,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             binder.ArrayEnd();
         }));
 
-        m_Results = new NativeArray<LinkedTripsInfo>(3, Allocator.Persistent);
+        m_Results = new NativeArray<LinkedTripsInfo>(4, Allocator.Persistent);
         m_PKTResults = new NativeArray<PKTInfo>(16, Allocator.Persistent);
         m_TransfersResults = new NativeArray<TransferInfo>(1, Allocator.Persistent);
 
@@ -315,6 +316,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             int transitLinkedTrips = 0;
             int transitUnlinkedTrips = 0;
             int vehicleLinkedTrips = 0;
+            int bicycleLinkedTrips = 0;
             int pedLinkedTrips = 0;
 
             int[] unlinkedModeTrips = new int[Enum.GetNames(typeof(TransportType)).Length - 1];
@@ -354,9 +356,12 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
 
                             if (EntityManager.TryGetComponent<Game.Net.ConnectionLane>(element.m_Target, out var cn))
                             {
-                                if ((cn.m_Flags & ConnectionLaneFlags.Pedestrian) != 0) countRoadType[k, 0] = 1;
-                                if ((cn.m_Flags & ConnectionLaneFlags.Road) != 0) countRoadType[k, 1] = 1;
+                                if ((cn.m_Flags & ConnectionLaneFlags.Pedestrian) != 0)
+                                    countRoadType[k, 0] = 1;
+                                if ((cn.m_Flags & ConnectionLaneFlags.Road) != 0)
+                                    countRoadType[k, 1] = 1;
                             }
+
 
                             if (EntityManager.TryGetComponent(element.m_Target, out Owner owner))
                             {
@@ -446,15 +451,30 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
                             }
                         } // end for i
 
+
                         // ---------- classify trip & compute segment count bin ----------
                         totalModes += routesHashSet.Count();
 
+                        // Decide the primary mode for *non-transit* trips based on the owning entity
+                        bool isBicycleTrip = EntityManager.HasComponent<Bicycle>(path);
+
                         if (totalModes == 0)
                         {
-                            if (countRoadType[k, 1] == 1) vehicleLinkedTrips++;
-                            else if (countRoadType[k, 0] == 1 && countRoadType[k, 1] == 0) pedLinkedTrips++;
+                            if (isBicycleTrip)
+                                bicycleLinkedTrips++;
+                            // Purely non-transit trip
+                            else if (countRoadType[k, 1] == 1)
+                            {
+                                vehicleLinkedTrips++;
+                            }
+                            else if (countRoadType[k, 0] == 1 && countRoadType[k, 1] == 0)
+                            {
+                                // Only pedestrian infrastructure: walking trip
+                                pedLinkedTrips++;
+                            }
                         }
 
+                        // Existing “access to transit” logic stays the same
                         if (countRoadType[k, 1] == 1 && routesHashSet.Count() >= 1) countAccess.y++;
                         else if (routesHashSet.Count() > 1) countAccess.z++;
                         else if (routesHashSet.Count() == 1) countAccess.x++;
@@ -465,6 +485,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
                             transitUnlinkedTrips += totalModes;
                         }
 
+
                         // Segment count for THIS trip:
                         int segmentCount = pathElements.Length;
 
@@ -473,8 +494,8 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
                         if (binIndex < 0) binIndex = 0;
                         if (binIndex >= m_PedLenResults.Length) binIndex = m_PedLenResults.Length - 1;
 
-                        // Define "pure pedestrian" trip as before (touches ped lanes, no road/vehicle, no transit)
                         bool isPurePedTrip = (countRoadType[k, 1] == 0) && (routesHashSet.Count() == 0) && (countRoadType[k, 0] == 1);
+
 
                         if (isPurePedTrip) segBinsPure[binIndex]++;
                         else segBinsMixed[binIndex]++;
@@ -485,17 +506,43 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             } // foreach path
 
             // ---------------- existing: linked trips shares ----------------
-            LinkedTripsInfo info = new LinkedTripsInfo((int)linkedMode.Vehicle);
-            info.Trips = (int)(10 * Math.Round(100 * (vehicleLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips)), 1));
-            m_Results[(int)linkedMode.Vehicle] = info;
+            int totalLinkedTrips = vehicleLinkedTrips + transitLinkedTrips + bicycleLinkedTrips + pedLinkedTrips;
 
-            info = new LinkedTripsInfo((int)linkedMode.Transit);
-            info.Trips = (int)(10 * Math.Round(100 * (transitLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips)), 1));
-            m_Results[(int)linkedMode.Transit] = info;
+            Mod.log.Info($"[PathTripsUISystem] Linked trips summary at hour {index}: total={totalLinkedTrips}, vehicle={vehicleLinkedTrips}, transit={transitLinkedTrips}, bicycle={bicycleLinkedTrips}, pedestrian={pedLinkedTrips}");
 
-            info = new LinkedTripsInfo((int)linkedMode.Pedestrian);
-            info.Trips = (int)(10 * Math.Round(100 * (pedLinkedTrips / (float)(vehicleLinkedTrips + transitLinkedTrips + pedLinkedTrips)), 1));
-            m_Results[(int)linkedMode.Pedestrian] = info;
+            if (totalLinkedTrips > 0)
+            {
+                LinkedTripsInfo info;
+
+                info = new LinkedTripsInfo((int)linkedMode.Vehicle);
+                info.Trips = (int)(10 * Math.Round(
+                    100f * (vehicleLinkedTrips / (float)totalLinkedTrips), 1));
+                m_Results[(int)linkedMode.Vehicle] = info;
+
+                info = new LinkedTripsInfo((int)linkedMode.Transit);
+                info.Trips = (int)(10 * Math.Round(
+                    100f * (transitLinkedTrips / (float)totalLinkedTrips), 1));
+                m_Results[(int)linkedMode.Transit] = info;
+
+                info = new LinkedTripsInfo((int)linkedMode.Bicycle);
+                info.Trips = (int)(10 * Math.Round(
+                    100f * (bicycleLinkedTrips / (float)totalLinkedTrips), 1));
+                m_Results[(int)linkedMode.Bicycle] = info;
+
+                info = new LinkedTripsInfo((int)linkedMode.Pedestrian);
+                info.Trips = (int)(10 * Math.Round(
+                    100f * (pedLinkedTrips / (float)totalLinkedTrips), 1));
+                m_Results[(int)linkedMode.Pedestrian] = info;
+            }
+            else
+            {
+                // No linked trips at all – just zero out the results
+                for (int i = 0; i < m_Results.Length; i++)
+                {
+                    m_Results[i] = new LinkedTripsInfo(i) { Trips = 0 };
+                }
+            }
+
 
             // ---------------- existing: PKT by mode ------------------------
             List<int> transports = new() { (int)TransportType.Bus, (int)TransportType.Tram, (int)TransportType.Subway, (int)TransportType.Train, (int)TransportType.Ship, (int)TransportType.Airplane, (int)TransportType.Ferry };
@@ -538,6 +585,42 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             m_uiPedLenResults.Update();
         }
     }
+
+    // True if this entity OR any of its owners up the chain is a Bicycle vehicle.
+    // True if this entity OR any of its owners up the chain corresponds to a bicycle
+    // (either via a Bicycle component on the instance, or on its prefab).
+    bool IsBicycleOwner(Entity e)
+    {
+        Entity cur = e;
+
+        // Climb up the Owner chain a few steps in case we're starting from
+        // a child entity (agent, lane owner, etc.) instead of the vehicle itself.
+        for (int depth = 0; depth < 6; depth++)
+        {
+            // 1) Direct Bicycle component on the entity (vehicle archetype with Bicycle)
+            if (EntityManager.HasComponent<Bicycle>(cur))
+                return true;
+
+            // 2) Bicycle component on the prefab of this entity
+            if (EntityManager.TryGetComponent<PrefabRef>(cur, out PrefabRef prefabRef))
+            {
+                if (prefabRef.m_Prefab != Entity.Null &&
+                    EntityManager.HasComponent<Bicycle>(prefabRef.m_Prefab))
+                {
+                    return true;
+                }
+            }
+
+            // 3) Walk up to the owner (vehicle / object / building / whatever)
+            if (!EntityManager.TryGetComponent<Owner>(cur, out Owner owner))
+                break;
+
+            cur = owner.m_Owner;
+        }
+
+        return false;
+    }
+
 
 
 

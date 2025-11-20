@@ -163,18 +163,22 @@ const LinkedTrips: FC<LinkedTripsProps> = ({ onClose }) => {
                         </Tooltip>
                     <DataDivider />
                     <div style={{ height: '5rem' }}></div>
-                    <LinkedTripsMode
-                        levelName="Vehicle"
-                        levelValues={linkedTrips[0]}
-                    />
-                    <LinkedTripsMode
-                        levelName="Transit"
-                        levelValues={linkedTrips[1]}
-                    />
-                    <LinkedTripsMode
-                        levelName="Walk"
-                        levelValues={linkedTrips[2]}
-                    />
+                        <LinkedTripsMode
+                            levelName="Vehicle"
+                            levelValues={linkedTrips[0]}
+                        />
+                        <LinkedTripsMode
+                            levelName="Transit"
+                            levelValues={linkedTrips[1]}
+                        />
+                        <LinkedTripsMode
+                            levelName="Bicycle"
+                            levelValues={linkedTrips[2]}
+                        />
+                        <LinkedTripsMode
+                            levelName="Walk"
+                            levelValues={linkedTrips[3]}
+                        />
                     <DataDivider />
                 </div>
             )}
