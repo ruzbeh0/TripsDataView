@@ -508,7 +508,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             // ---------------- existing: linked trips shares ----------------
             int totalLinkedTrips = vehicleLinkedTrips + transitLinkedTrips + bicycleLinkedTrips + pedLinkedTrips;
 
-            Mod.log.Info($"[PathTripsUISystem] Linked trips summary at hour {index}: total={totalLinkedTrips}, vehicle={vehicleLinkedTrips}, transit={transitLinkedTrips}, bicycle={bicycleLinkedTrips}, pedestrian={pedLinkedTrips}");
+            //Mod.log.Info($"[PathTripsUISystem] Linked trips summary at hour {index}: total={totalLinkedTrips}, vehicle={vehicleLinkedTrips}, transit={transitLinkedTrips}, bicycle={bicycleLinkedTrips}, pedestrian={pedLinkedTrips}");
 
             if (totalLinkedTrips > 0)
             {
