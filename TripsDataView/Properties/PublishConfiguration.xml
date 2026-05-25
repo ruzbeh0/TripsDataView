@@ -64,15 +64,17 @@ This table shows the origin and destination of trips grouped by district. The ro
 	<!--Link to the forum post where the mod can be discussed-->
 	<ForumLink Value="https://forum.paradoxplaza.com/forum/threads/trips-view-mod.1720582/" />
 	<!--Version of the mod-->
-	<ModVersion Value="0.4.2" />
+	<ModVersion Value="0.5" />
 	<!--Recommended version of the base game to use the mod-->
 	<GameVersion Value="1.3.*" />
 	<!--Dependency for the mod, can be set multiple times-->
 	<Dependency Id="" />
 	<!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
 	<ChangeLog>
-* Updated for game version 1.4.2
-* Added bicycle to mode shares panel
+* Added District to District Desire Lines
+* Added Trip Length Frequency Distribution graph
+* Adjusted font sizes
+* Added transfer distribution graph
 	</ChangeLog>
 	<!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdin, gitlab-->
 	<ExternalLink Type="github" Url="https://github.com/ruzbeh0/TripsDataView" />

@@ -53,12 +53,12 @@ interface AggregatedInfo {
 // Define a common font configuration
 const commonFont = {
   family: 'Arial, sans-serif',
-  size: 14,
+  size: 18,
   weight: 'normal' as const,
 };
 const yaxisfont = {
   family: 'Arial, sans-serif',
-  size: 11,
+  size: 14,
   weight: 'normal' as const,
 };
 // Define age ranges as a constant
@@ -448,6 +448,7 @@ const TransitWaiting: FC<TransitWaitingProps> = ({ onClose }) => {
       onClose={handleClose}
       initialSize={{ width: panWidth, height: panHeight }}
       initialPosition={{ top: window.innerHeight * 0.009, left: window.innerWidth * 0.053 }}
+      minContentFontSize={16}
       style={{
         backgroundColor: 'var(--panelColorNormal)',
         display: 'flex',
@@ -479,7 +480,7 @@ const TransitWaiting: FC<TransitWaitingProps> = ({ onClose }) => {
       border: 'none',
       borderRadius: '4px',
       cursor: 'pointer',
-      fontSize: '14px',
+      fontSize: '16px',
       margin: '3rem',
     }}
     aria-pressed={isGrouped}
@@ -498,7 +499,7 @@ const TransitWaiting: FC<TransitWaitingProps> = ({ onClose }) => {
       border: 'none',
       borderRadius: '4px',
       cursor: 'pointer',
-      fontSize: '14px',
+      fontSize: '16px',
       margin: '3rem',
     }}
     aria-pressed={showSummaryStats}
@@ -553,19 +554,19 @@ const TransitWaiting: FC<TransitWaitingProps> = ({ onClose }) => {
               <div className="row_S2v" style={{ width: '12%', justifyContent: 'center' }}>
                 Tram
               </div>
-              <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
+              <div className="row_S2v" style={{ width: '9%', justifyContent: 'center' }}>
                 Subway
               </div>
-              <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
+              <div className="row_S2v" style={{ width: '9%', justifyContent: 'center' }}>
                 Train
               </div>
-              <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
+              <div className="row_S2v" style={{ width: '9%', justifyContent: 'center' }}>
                 Ship
               </div>
-              <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
+              <div className="row_S2v" style={{ width: '9%', justifyContent: 'center' }}>
                 Airplane
               </div>
-              <div className="row_S2v small_ExK" style={{ width: '9%', justifyContent: 'center' }}>
+              <div className="row_S2v" style={{ width: '9%', justifyContent: 'center' }}>
                   Ferry
               </div>
             </div>

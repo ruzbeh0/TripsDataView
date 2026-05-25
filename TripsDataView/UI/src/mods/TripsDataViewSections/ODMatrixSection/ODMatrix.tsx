@@ -13,17 +13,17 @@ interface ODMatrixProps {
 }
 
 /* Layout */
-const CELL_W = 90;
-const ROW_HDR_W = 160;
-const CELL_H = 28;
-const TOTAL_W = 110;
+const CELL_W = 110;
+const ROW_HDR_W = 190;
+const CELL_H = 34;
+const TOTAL_W = 130;
 const PADDING = 12;
 const HEADER_ROT_DEG = -90;
-const FOOT_H = 34;
+const FOOT_H = 42;
 
 // Show a bit fewer rows and more columns
-const ROWS_PER_PAGE = 17;
-const COLS_PER_PAGE = 11;
+const ROWS_PER_PAGE = 14;
+const COLS_PER_PAGE = 9;
 
 const font = {
     family: [
@@ -40,7 +40,7 @@ const font = {
         'Arial',
         'sans-serif',
     ].join(', '),
-    size: 12,
+    size: 16,
 };
 
 function parseRGBAny(s: string): [number, number, number] | null {
@@ -235,6 +235,7 @@ const ODMatrix: FC<ODMatrixProps> = ({ onClose }) => {
             title="Origin Destination Matrix by Districts"
             onClose={handleClose}
             initialSize={{ width: panWidth, height: panHeight }}
+            minContentFontSize={16}
             initialPosition={{
                 top: window.innerHeight * 0.1,
                 left: window.innerWidth * 0.15,

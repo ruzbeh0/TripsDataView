@@ -25,8 +25,8 @@ namespace TripsDataView
         public static Setting setting;
         public static readonly string Id = "TripsDataView";
         public static Mod Instance { get; private set; }
-     
-        public static ExecutableAsset modAsset { get; private set; }    
+
+        public static ExecutableAsset modAsset { get; private set; }
         internal ILog Log { get; private set; }
 
         // Static logger instance with custom logger name and settings
@@ -73,7 +73,9 @@ namespace TripsDataView
             updateSystem.UpdateAt<TripsDataView.Systems.TripPurposeTempFileSaveSystem>(SystemUpdatePhase.Serialize);
             updateSystem.UpdateAt<TripsDataView.Systems.CommuteTimeUISystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateAt<TripsDataView.Systems.PathTripsUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<TripsDataView.Systems.TripLengthFrequencyUISystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateAt<TripsDataView.Systems.ODMatrixUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<TripsDataView.Systems.ODDesireLinesOverlaySystem>(SystemUpdatePhase.Rendering);
         }
 
         // Method that runs when the mod is disposed of

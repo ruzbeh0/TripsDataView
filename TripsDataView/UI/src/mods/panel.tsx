@@ -16,6 +16,7 @@ interface PanelProps {
     savedSize?: { width: number; height: number };
     onSavePosition?: (position: { top: number; left: number }) => void;
     onSaveSize?: (size: { width: number; height: number }) => void;
+    minContentFontSize?: number;
 }
 
 type InteractionState = 'none' | 'dragging' | 'resizing';
@@ -34,6 +35,7 @@ const Panel: FC<PanelProps> = ({
     savedSize,
     onSavePosition = () => {},
     onSaveSize = () => {},
+    minContentFontSize = 8,
 }) => {
     // State for position and size
     const [position, setPosition] = useState(savedPosition || initialPosition);
@@ -138,10 +140,10 @@ const Panel: FC<PanelProps> = ({
     const adjustFontSize = useCallback(() => {
         if (contentRef.current) {
             // Calculate font size based on the panel's width and height
-            const fontSize = Math.max(Math.min(size.width * 0.02, size.height * 0.02), 8); // Clamp between 8px and 2% of width/height
+            const fontSize = Math.max(Math.min(size.width * 0.02, size.height * 0.02), minContentFontSize);
             contentRef.current.style.fontSize = `${fontSize}px`;
         }
-    }, [size]);
+    }, [minContentFontSize, size]);
 
     // Adjust font size whenever size changes
     useEffect(() => {

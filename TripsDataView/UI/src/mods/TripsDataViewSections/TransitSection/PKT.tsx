@@ -48,12 +48,12 @@ interface AggregatedInfo {
 // Define a common font configuration
 const commonFont = {
   family: 'Arial, sans-serif',
-  size: 14,
+  size: 18,
   weight: 'normal' as const,
 };
 const yaxisfont = {
   family: 'Arial, sans-serif',
-  size: 11,
+  size: 14,
   weight: 'normal' as const,
 };
 
@@ -278,6 +278,7 @@ const PKT: FC<PKTProps> = ({ onClose }) => {
       onClose={handleClose}
       initialSize={{ width: panWidth, height: panHeight }}
       initialPosition={{ top: window.innerHeight * 0.009, left: window.innerWidth * 0.053 }}
+      minContentFontSize={16}
       style={{
         backgroundColor: 'var(--panelColorNormal)',
         display: 'flex',
@@ -310,7 +311,7 @@ const PKT: FC<PKTProps> = ({ onClose }) => {
       border: 'none',
       borderRadius: '4px',
       cursor: 'pointer',
-      fontSize: '14px',
+      fontSize: '16px',
       margin: '3rem',
     }}
     aria-pressed={showSummaryStats}

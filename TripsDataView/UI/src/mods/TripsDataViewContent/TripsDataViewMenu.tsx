@@ -9,6 +9,9 @@ import TripPurpose from "mods/TripsDataViewSections/TripPurposeSection/TripPurpo
 import CommuteTime from "mods/TripsDataViewSections/CommuteTimeSection/CommuteTime";
 import ModeShares from "mods/TripsDataViewSections/ModeSharesSection/ModeShares";
 import ODMatrix from "mods/TripsDataViewSections/ODMatrixSection/ODMatrix";
+import TripLengthFrequency from "mods/TripsDataViewSections/TripLengthFrequencySection/TripLengthFrequency";
+import TransferDistribution from "mods/TripsDataViewSections/TransferDistributionSection/TransferDistribution";
+import ODDesireLines from "mods/TripsDataViewSections/ODDesireLinesSection/ODDesireLines";
 
 type Section =
     | 'Mode Shares'
@@ -17,48 +20,55 @@ type Section =
     | 'Transit PKT'
     | 'Trip Purpose'
     | 'Commute Time'
-    | 'Pedestrian Trip Lengths'
+    | 'Trip Length Frequency'
+    | 'Transfer Distribution'
+    | 'OD Desire Lines'
     | 'OD Matrix';
 
 // Define a new type for components that accept an onClose prop
 type SectionComponentProps = {
-  onClose: () => void;
+    onClose: () => void;
 };
 
 // Update the sections array type
 const sections: { name: Section; displayName: string; component: FC<SectionComponentProps> }[] = [
-  { name: 'Mode Shares', displayName: 'ModeShares', component: ModeShares },
-  { name: 'Transit Hourly Passengers', displayName: 'Transit', component: Transit },
-  { name: 'Transit Waiting Time', displayName: 'TransitWaiting', component: TransitWaiting },
-  { name: 'Transit PKT', displayName: 'PKT', component: PKT },
-  { name: 'Trip Purpose', displayName: 'TripPurpose', component: TripPurpose },
-  { name: 'Commute Time', displayName: 'CommuteTime', component: CommuteTime },
-  { name: 'OD Matrix', displayName: 'ODMatrix', component: ODMatrix },
+    { name: 'Mode Shares', displayName: 'ModeShares', component: ModeShares },
+    { name: 'Transit Hourly Passengers', displayName: 'Transit', component: Transit },
+    { name: 'Transit Waiting Time', displayName: 'TransitWaiting', component: TransitWaiting },
+    { name: 'Transit PKT', displayName: 'PKT', component: PKT },
+    { name: 'Trip Purpose', displayName: 'TripPurpose', component: TripPurpose },
+    { name: 'Commute Time', displayName: 'CommuteTime', component: CommuteTime },
+    { name: 'Trip Length Frequency', displayName: 'TripLengthFrequency', component: TripLengthFrequency },
+    { name: 'Transfer Distribution', displayName: 'TransferDistribution', component: TransferDistribution },
+    { name: 'OD Desire Lines', displayName: 'ODDesireLines', component: ODDesireLines },
+    { name: 'OD Matrix', displayName: 'ODMatrix', component: ODMatrix },
 ];
 
 const TripsDataViewButton: FC = () => {
-  const [mainMenuOpen, setMainMenuOpen] = useState<boolean>(false);
-  const [openSections, setOpenSections] = useState<Record<Section, boolean>>({
-    'Mode Shares': false,
-    'Transit Hourly Passengers': false,
-    'Transit Waiting Time': false,
-    'Transit PKT': false,
-    'Trip Purpose': false,
-    'Commute Time': false,
-    'Pedestrian Trip Lengths': false,
-    'OD Matrix': false,
-});
+    const [mainMenuOpen, setMainMenuOpen] = useState<boolean>(false);
+    const [openSections, setOpenSections] = useState<Record<Section, boolean>>({
+        'Mode Shares': false,
+        'Transit Hourly Passengers': false,
+        'Transit Waiting Time': false,
+        'Transit PKT': false,
+        'Trip Purpose': false,
+        'Commute Time': false,
+        'Trip Length Frequency': false,
+        'Transfer Distribution': false,
+        'OD Desire Lines': false,
+        'OD Matrix': false,
+    });
 
-  const toggleMainMenu = useCallback(() => {
-    setMainMenuOpen(prev => !prev);
-  }, []);
+    const toggleMainMenu = useCallback(() => {
+        setMainMenuOpen(prev => !prev);
+    }, []);
 
-  const toggleSection = useCallback((section: Section, isOpen?: boolean) => {
-    setOpenSections(prev => ({
-      ...prev,
-      [section]: isOpen !== undefined ? isOpen : !prev[section],
-    }));
-  }, []);
+    const toggleSection = useCallback((section: Section, isOpen?: boolean) => {
+        setOpenSections(prev => ({
+            ...prev,
+            [section]: isOpen !== undefined ? isOpen : !prev[section],
+        }));
+    }, []);
 
     const tooltipTexts: Record<Section, string> = {
         'Mode Shares': 'Distribution of transport mode usage',
@@ -67,7 +77,9 @@ const TripsDataViewButton: FC = () => {
         'Transit PKT': 'Transit Passenger Kilometers Travelled',
         'Trip Purpose': 'Purpose of trips based on origin and destination',
         'Commute Time': 'Time spent commuting',
-        'Pedestrian Trip Lengths': 'Histogram of walking distances (full vs access/egress)',
+        'Trip Length Frequency': 'Trip Length Frequency Distribution by straight-line origin-destination distance',
+        'Transfer Distribution': 'Distribution of linked transit trips by transfer count',
+        'OD Desire Lines': 'Map overlay showing district boundaries and weighted OD desire lines',
         'OD Matrix': 'Origin-Destination matrix showing trip counts between districts',
     };
 

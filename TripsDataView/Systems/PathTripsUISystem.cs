@@ -105,6 +105,14 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
         public TransferInfo(int _index) { Index = _index; }
     }
 
+    private struct TransferDistributionInfo
+    {
+        public int Index;
+        public int Trips;
+
+        public TransferDistributionInfo(int _index) { Index = _index; }
+    }
+
     private static void WriteLinkedData(IJsonWriter writer, LinkedTripsInfo info)
     {
         writer.TypeBegin("LinkedTripsInfo");
@@ -135,6 +143,16 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
         writer.TypeEnd();
     }
 
+    private static void WriteTransferDistributionData(IJsonWriter writer, TransferDistributionInfo info)
+    {
+        writer.TypeBegin("TransferDistributionInfo");
+        writer.PropertyName("index");
+        writer.Write(info.Index);
+        writer.PropertyName("trips");
+        writer.Write(info.Trips);
+        writer.TypeEnd();
+    }
+
     private const string kGroup = "pathTripsInfo";
     protected const string group = "pathTrips";
 
@@ -143,11 +161,13 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
     private RawValueBinding m_uiResults;
     private RawValueBinding m_uiPKTResults;
     private RawValueBinding m_uiTransfersResults;
+    private RawValueBinding m_uiTransferDistributionResults;
 
 
     private NativeArray<LinkedTripsInfo> m_Results; // final results, will be filled via jobs and then written as output
     private NativeArray<PKTInfo> m_PKTResults; // final results, will be filled via jobs and then written as output
     private NativeArray<TransferInfo> m_TransfersResults;
+    private NativeArray<TransferDistributionInfo> m_TransferDistributionResults;
 
     const int PED_METERS_PER_BIN = 200;
 
@@ -199,9 +219,20 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             binder.ArrayEnd();
         }));
 
+        AddBinding(m_uiTransferDistributionResults = new RawValueBinding(kGroup, "transferDistributionDetails", delegate (IJsonWriter binder)
+        {
+            binder.ArrayBegin(m_TransferDistributionResults.Length);
+            for (int i = 0; i < m_TransferDistributionResults.Length; i++)
+            {
+                WriteTransferDistributionData(binder, m_TransferDistributionResults[i]);
+            }
+            binder.ArrayEnd();
+        }));
+
         m_Results = new NativeArray<LinkedTripsInfo>(4, Allocator.Persistent);
         m_PKTResults = new NativeArray<PKTInfo>(16, Allocator.Persistent);
         m_TransfersResults = new NativeArray<TransferInfo>(1, Allocator.Persistent);
+        m_TransferDistributionResults = new NativeArray<TransferDistributionInfo>(4, Allocator.Persistent);
 
         AddBinding(m_uiPedLenResults = new RawValueBinding(kGroup, "pedestrianDistanceDetails", binder =>
         {
@@ -225,6 +256,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
     {
         m_Results.Dispose();
         m_TransfersResults.Dispose();
+        m_TransferDistributionResults.Dispose();
         m_PKTResults.Dispose();
         m_PedLenResults.Dispose();
 
@@ -322,6 +354,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             int[] unlinkedModeTrips = new int[Enum.GetNames(typeof(TransportType)).Length - 1];
             float[] modePKT = new float[Enum.GetNames(typeof(TransportType)).Length - 1];
             int[,] transferMatrix = new int[Enum.GetNames(typeof(TransportType)).Length - 1, Enum.GetNames(typeof(TransportType)).Length - 1];
+            int[] transferDistribution = new int[m_TransferDistributionResults.Length];
 
             // ---------------- new: segment-count histogram accumulators --------------
             int[] segBinsPure = new int[m_PedLenResults.Length]; // pedestrian-only trips
@@ -483,6 +516,10 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
                         {
                             transitLinkedTrips++;
                             transitUnlinkedTrips += totalModes;
+
+                            int transferCount = totalModes - 1;
+                            int transferBin = Math.Min(transferCount, transferDistribution.Length - 1);
+                            transferDistribution[transferBin]++;
                         }
 
 
@@ -565,6 +602,14 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
                 info2.Trips = 0;
             m_TransfersResults[0] = info2;
 
+            // ---------------- transfer-count distribution ------------------
+            for (int i = 0; i < m_TransferDistributionResults.Length; i++)
+            {
+                var transferDistributionInfo = new TransferDistributionInfo(i);
+                transferDistributionInfo.Trips = transferDistribution[i];
+                m_TransferDistributionResults[i] = transferDistributionInfo;
+            }
+
             // ---------------- push the segment-count histogram --------------
             for (int i = 0; i < m_PedLenResults.Length; i++)
             {
@@ -582,6 +627,7 @@ public partial class PathTripsUISystem : ExtendedUISystemBase
             m_uiResults.Update();
             m_uiPKTResults.Update();
             m_uiTransfersResults.Update();
+            m_uiTransferDistributionResults.Update();
             m_uiPedLenResults.Update();
         }
     }
